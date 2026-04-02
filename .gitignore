@@ -1,0 +1,8 @@
+.env
+.whoop_tokens.json
+__pycache__/
+.DS_Store
+data/
+*.pyc
+.pytest_cache/
+venv/
