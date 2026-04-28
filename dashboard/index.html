@@ -7,8 +7,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f0f0f">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Whoop Coach</title>
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23F2F2F7' width='100' height='100' rx='20'/><text x='50' y='68' text-anchor='middle' font-size='50' font-weight='700' fill='%23007AFF'>W</text></svg>">
+<title>Arnold</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23007AFF' width='100' height='100' rx='20'/><text x='50' y='68' text-anchor='middle' font-size='50' font-weight='700' fill='%23FFFFFF'>A</text></svg>">
 <style>
 :root{--bg:#F2F2F7;--card:#FFFFFF;--input:#F2F2F7;--border:rgba(60,60,67,0.13);--divider:rgba(60,60,67,0.1);--accent:#007AFF;--accent-dim:rgba(0,122,255,0.1);--text:#000000;--text2:rgba(60,60,67,0.85);--text3:rgba(60,60,67,0.48);--danger:#FF3B30;--warn:#FF9500;--gold:#FF9500;--radius:12px;--nav-h:68px;--safe-b:env(safe-area-inset-bottom,0px)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -156,6 +156,54 @@ h3{font-size:17px;font-weight:600;margin-bottom:8px;color:var(--text)}
 .timer-dur{display:flex;gap:8px;margin-bottom:24px}
 .timer-dur button{padding:8px 16px;border-radius:100px;font-size:13px;font-weight:500;background:var(--card);color:var(--text3);box-shadow:0 1px 3px rgba(0,0,0,0.08);transition:all .15s}
 .timer-dur button.active{background:var(--accent);color:#fff;box-shadow:none}
+/* TIMER MINIMISE BUTTON */
+.timer-min-btn{position:absolute;top:20px;right:20px;width:36px;height:36px;border-radius:50%;background:rgba(60,60,67,0.08);display:flex;align-items:center;justify-content:center}
+.timer-min-btn svg{width:20px;height:20px;fill:var(--text3)}
+/* TIMER PILL (mini floating timer) */
+#timer-pill{position:fixed;bottom:calc(var(--nav-h) + var(--safe-b) + 12px);left:50%;transform:translateX(-50%);z-index:200;background:var(--accent);color:#fff;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;padding:10px 22px;border-radius:100px;display:none;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,122,255,0.35);cursor:pointer;white-space:nowrap}
+#timer-pill.show{display:flex}
+/* WORKOUT ELAPSED */
+.workout-elapsed{font-size:13px;font-weight:600;color:var(--text3);font-variant-numeric:tabular-nums}
+/* WORKOUT TIMER PILL (floating, always visible during workout) */
+#workout-timer-pill{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:16px;z-index:150;background:rgba(60,60,67,0.72);color:#fff;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;padding:7px 14px;border-radius:100px;display:none;align-items:center;gap:6px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 10px rgba(0,0,0,0.18)}
+#workout-timer-pill.show{display:flex}
+/* MID-WORKOUT EDIT CONTROLS */
+.set-count-ctrl{display:flex;align-items:center;gap:6px}
+.set-count-ctrl button{width:26px;height:26px;border-radius:50%;background:rgba(60,60,67,0.08);font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center}
+.log-exercise-del{width:28px;height:28px;border-radius:50%;background:rgba(255,59,48,0.08);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.log-exercise-del svg{width:16px;height:16px;fill:var(--danger)}
+.log-ex-action{width:30px;height:30px;border-radius:8px;background:rgba(60,60,67,0.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:none;cursor:pointer}
+.log-ex-action svg{width:16px;height:16px;fill:var(--text3)}
+.log-ex-action.danger{background:rgba(255,59,48,0.08)}
+.log-ex-action.danger svg{fill:var(--danger)}
+.log-sets-controls{display:flex;gap:6px;margin-top:2px;margin-bottom:6px}
+/* MID-WORKOUT PICKER MODAL */
+#mid-workout-picker{position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.4);display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+#mid-workout-picker.show{display:flex}
+#mid-workout-picker .picker-sheet{background:var(--card);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px 16px calc(24px + var(--safe-b));max-height:78vh;display:flex;flex-direction:column}
+#mid-picker-results{overflow-y:auto;flex:1;margin-top:10px}
+/* BODY MAP */
+.body-map-wrap{display:flex;gap:12px;justify-content:center;margin-bottom:12px}
+.body-map-wrap svg{width:120px;height:220px;flex-shrink:0}
+.body-map-tooltip{text-align:center;font-size:12px;color:var(--text3);min-height:18px;margin-top:4px}
+.body-map-legend{display:flex;align-items:center;gap:6px;justify-content:center;margin-top:8px;font-size:11px;color:var(--text3)}
+.body-map-legend-grad{width:80px;height:8px;border-radius:4px;background:linear-gradient(to right,#B8D4FF,#34C759,#FF9500,#FF3B30)}
+/* PROFILE FIELDS */
+.profile-field{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:0.5px solid var(--divider)}
+.profile-field label{font-size:14px;color:var(--text2)}
+.profile-field select,.profile-field input[type=number]{background:var(--input);border-radius:8px;padding:6px 10px;font-size:14px;text-align:right;width:90px;color:var(--text)}
+/* FEEDBACK FAB */
+#feedback-fab{position:fixed;bottom:calc(var(--nav-h) + var(--safe-b) + 12px);right:16px;z-index:200;width:46px;height:46px;border-radius:50%;background:var(--card);box-shadow:0 2px 12px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;transition:transform .15s}
+#feedback-fab:active{transform:scale(.92)}
+/* FEEDBACK MODAL */
+#feedback-modal{position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.4);display:none;align-items:flex-end;justify-content:center}
+#feedback-modal.show{display:flex}
+#feedback-modal .sheet{background:var(--card);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:24px 20px calc(32px + var(--safe-b))}
+#feedback-modal textarea{width:100%;min-height:120px;background:var(--input);border-radius:12px;padding:12px;font-size:15px;resize:none;color:var(--text);margin:12px 0 16px}
+/* NAME SETUP EXTRA FIELDS */
+.setup-field{width:100%;max-width:320px;margin-bottom:12px}
+.setup-field label{display:block;font-size:13px;color:var(--text3);margin-bottom:4px;text-align:left}
+.setup-field select,.setup-field input[type=number]{width:100%;padding:14px 16px;background:var(--card);border-radius:var(--radius);font-size:16px;color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,0.08)}
 
 /* HISTORY */
 .view-toggle{display:flex;background:rgba(60,60,67,0.1);border-radius:10px;padding:2px;margin-bottom:14px}
@@ -262,25 +310,23 @@ h3{font-size:17px;font-weight:600;margin-bottom:8px;color:var(--text)}
 
 <!-- AUTH SCREEN -->
 <div id="welcome">
-  <div class="auth-logo">WHOOP COACH</div>
+  <div class="auth-logo">ARNOLD</div>
   <div class="auth-sub">Progressive overload tracking</div>
   <button class="auth-btn auth-btn-google" onclick="signInWithGoogle()">
     <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M23.745 12.27c0-.79-.07-1.54-.19-2.27h-11.3v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/><path fill="#34A853" d="M12.255 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96h-3.98v3.09C3.515 21.3 7.615 24 12.255 24z"/><path fill="#FBBC05" d="M5.525 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62h-3.98a11.86 11.86 0 0 0 0 10.76l3.98-3.09z"/><path fill="#EA4335" d="M12.255 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C18.205 1.19 15.495 0 12.255 0c-4.64 0-8.74 2.7-10.71 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/></svg>
     Continue with Google
-  </button>
-  <button class="auth-btn auth-btn-apple" onclick="signInWithApple()">
-    <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.7 9.05 7.4c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.39-1.32 2.76-2.53 3.99zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
-    Continue with Apple
   </button>
   <div class="auth-terms">By continuing, you agree to our Terms of Service and Privacy Policy.</div>
 </div>
 
 <!-- NAME SETUP (shown after OAuth if name is empty) -->
 <div id="name-setup">
-  <h2>What's your name?</h2>
-  <p>Used to personalise your dashboard</p>
-  <input type="text" id="setup-name" placeholder="Your name" maxlength="30" autocomplete="off">
-  <button class="btn btn-primary btn-block" onclick="finishNameSetup()">Continue</button>
+  <h2>Welcome to Arnold</h2>
+  <p>Tell us a bit about yourself</p>
+  <input type="text" id="setup-name" placeholder="Your name" maxlength="30" autocomplete="off" style="width:100%;max-width:320px;padding:16px 20px;background:var(--card);border-radius:var(--radius);font-size:18px;text-align:center;color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,0.08);margin-bottom:12px">
+  <div class="setup-field"><label>Gender</label><select id="setup-gender"><option value="male">Male</option><option value="female">Female</option></select></div>
+  <div class="setup-field"><label>Age</label><input type="number" id="setup-age" min="10" max="100" placeholder="30" style="text-align:left"></div>
+  <button class="btn btn-primary btn-block" style="max-width:320px;margin-top:8px" onclick="finishNameSetup()">Let's go</button>
 </div>
 
 <!-- PROFILE MODAL -->
@@ -288,12 +334,28 @@ h3{font-size:17px;font-weight:600;margin-bottom:8px;color:var(--text)}
   <div class="sheet">
     <h3 id="profile-name-display"></h3>
     <div class="email" id="profile-email-display"></div>
+    <div class="profile-field"><label>Gender</label><select id="profile-gender" onchange="saveProfileField('gender',this.value)"><option value="male">Male</option><option value="female">Female</option></select></div>
+    <div class="profile-field"><label>Age</label><input type="number" id="profile-age" min="10" max="100" style="width:70px;padding:6px 10px;border-radius:8px;background:var(--input);font-size:14px" onchange="saveProfileField('age',+this.value)"></div>
+    <div style="margin-top:20px"></div>
     <button class="btn btn-block btn-destructive" onclick="signOut()">Sign Out</button>
   </div>
 </div>
 
+<!-- FEEDBACK FAB -->
+<div id="feedback-fab" onclick="openFeedback()" title="Suggest a change">💬</div>
+
+<!-- FEEDBACK MODAL -->
+<div id="feedback-modal" onclick="if(event.target===this)closeFeedback()">
+  <div class="sheet">
+    <h3>Suggest a change</h3>
+    <textarea id="feedback-text" placeholder="What would make Arnold better for you?"></textarea>
+    <button class="btn btn-primary btn-block" onclick="submitFeedback()">Send</button>
+  </div>
+</div>
+
 <!-- REST TIMER -->
-<div id="rest-timer">
+<div id="rest-timer" style="position:relative">
+  <button class="timer-min-btn" onclick="minimiseTimer()" title="Minimise"><svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg></button>
   <div class="time-label">Rest Timer</div>
   <div class="time" id="timer-display">1:30</div>
   <div class="timer-dur">
@@ -303,6 +365,29 @@ h3{font-size:17px;font-weight:600;margin-bottom:8px;color:var(--text)}
     <button onclick="setTimerDur(180)">180s</button>
   </div>
   <button class="btn btn-primary" onclick="skipTimer()">Skip</button>
+</div>
+<!-- TIMER PILL -->
+<div id="timer-pill" onclick="restoreTimer()">
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="white"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"/><path d="M13 7h-2v5.414l3.293 3.293 1.414-1.414L13 11.586z"/></svg>
+  <span id="pill-display">1:30</span>
+</div>
+
+<!-- WORKOUT ELAPSED PILL -->
+<div id="workout-timer-pill">
+  <svg viewBox="0 0 24 24" width="13" height="13" fill="white" style="opacity:.8"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"/><path d="M13 7h-2v5.414l3.293 3.293 1.414-1.414L13 11.586z"/></svg>
+  <span id="workout-timer-display">0:00</span>
+</div>
+
+<!-- MID-WORKOUT EXERCISE PICKER -->
+<div id="mid-workout-picker" onclick="if(event.target===this)closeMidWorkoutPicker()">
+  <div class="picker-sheet">
+    <div class="flex justify-between items-center mb-12">
+      <h3 id="mid-picker-title">Add Exercise</h3>
+      <button onclick="closeMidWorkoutPicker()" style="width:28px;height:28px;border-radius:50%;background:rgba(60,60,67,0.08);font-size:20px;color:var(--text3);line-height:1">&times;</button>
+    </div>
+    <div class="search-bar" style="margin-bottom:0"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><input id="mid-picker-search" type="text" placeholder="Search exercises..." autocomplete="off" oninput="updateMidPickerSearch(this.value)"></div>
+    <div id="mid-picker-results"></div>
+  </div>
 </div>
 
 <!-- EXERCISE POPUP -->
@@ -774,8 +859,9 @@ async function loadUserData(user){
 
 function getAllRoutines(){
   const custom=getRoutines();
-  const presetIds=PRESET_ROUTINES.map(r=>r.id);
-  return[...PRESET_ROUTINES,...custom.filter(r=>!presetIds.includes(r.id))];
+  // Custom routines with the same ID as a preset override that preset (edited presets)
+  const customIds=new Set(custom.map(r=>r.id));
+  return[...custom,...PRESET_ROUTINES.filter(r=>!customIds.has(r.id))];
 }
 
 /* ============================================================
@@ -818,6 +904,9 @@ function getLastPerformance(exId){
 /* ============================================================
    PROGRESSIVE OVERLOAD ALGORITHM
    ============================================================ */
+// Inverse Epley: given a target e1RM and rep count, return the weight to lift
+function weightFromE1RM(e1rm,reps){return reps===1?e1rm:e1rm/(1+reps/30);}
+
 function getOverloadRec(exId,targetReps,targetRPE){
   const hist=getExerciseHistory(exId);
   if(hist.length===0)return{type:'first',text:'Log your first session to get recommendations'};
@@ -831,43 +920,48 @@ function getOverloadRec(exId,targetReps,targetRPE){
   const parts=repRange.split('-').map(Number);
   const minReps=parts[0]||8;
   const maxReps=parts[1]||parts[0]||10;
+  const midReps=Math.round((minReps+maxReps)/2);
 
-  // Use average RPE and best set from last session
+  // Compute implied 1RM for best set of every session
+  const sessionE1RMs=hist.map(h=>{
+    const bs=h.sets.reduce((b,s)=>calcE1RM(s.weight,s.reps)>calcE1RM(b.weight,b.reps)?s:b,h.sets[0]);
+    return calcE1RM(bs.weight,bs.reps);
+  });
+
+  // All-time best implied 1RM (anchors progression)
+  const bestE1RM=Math.max(...sessionE1RMs);
+
+  // Last session stats
   const avgRPE=lastSets.reduce((s,st)=>s+(st.rpe||8),0)/lastSets.length;
-  const bestSet=lastSets.reduce((b,s)=>(s.weight>b.weight||(s.weight===b.weight&&s.reps>b.reps))?s:b,lastSets[0]);
-  const lastW=bestSet.weight;
-  const lastR=bestSet.reps;
 
-  // Check deload: 3 consecutive sessions with no progression
+  // Deload check: 3 consecutive sessions with flat/declining e1RM
   if(hist.length>=3){
-    const recent=hist.slice(-3);
-    const e1rms=recent.map(h=>{
-      const bs=h.sets.reduce((b,s)=>calcE1RM(s.weight,s.reps)>calcE1RM(b.weight,b.reps)?s:b,h.sets[0]);
-      return calcE1RM(bs.weight,bs.reps);
-    });
-    if(e1rms[2]<=e1rms[0]&&e1rms[1]<=e1rms[0]){
-      const deloadW=Math.round((lastW*0.85)*2)/2;
-      const deloadR=Math.min(lastR+3,maxReps+3);
-      return{type:'deload',text:`Deload recommended \u2014 reduce to ${deloadW}kg \u00d7 ${deloadR} reps`,weight:deloadW,reps:deloadR};
+    const recent=sessionE1RMs.slice(-3);
+    if(recent[2]<=recent[0]&&recent[1]<=recent[0]){
+      const deloadE1RM=bestE1RM*0.8;
+      const deloadW=Math.max(inc,Math.round(weightFromE1RM(deloadE1RM,minReps)/inc)*inc);
+      return{type:'deload',text:`Deload \u2014 3 sessions stalled. Target ${deloadW}kg \u00d7 ${minReps} reps (80% of est. 1RM ${bestE1RM.toFixed(1)}kg)`,weight:deloadW,reps:minReps};
     }
   }
 
-  // Step 1: RPE check
-  if(avgRPE>=9){
-    return{type:'hold',text:`High RPE last session \u2014 consolidate: ${lastW}kg \u00d7 ${lastR} reps`,weight:lastW,reps:lastR};
-  }
-  if(avgRPE<=7){
-    const newW=Math.round((lastW+inc)*2)/2;
-    return{type:'progress',text:`Low RPE \u2014 increase to ${newW}kg \u00d7 ${minReps} reps`,weight:newW,reps:minReps};
+  // RPE-gated progression factor applied to best e1RM
+  if(avgRPE>=9.5){
+    // Very hard — stay at same relative intensity
+    const holdW=Math.max(inc,Math.round(weightFromE1RM(bestE1RM,midReps)/inc)*inc);
+    return{type:'hold',text:`RPE ${avgRPE.toFixed(1)} last session \u2014 consolidate at ${holdW}kg \u00d7 ${midReps} reps (est. 1RM ${bestE1RM.toFixed(1)}kg)`,weight:holdW,reps:midReps};
   }
 
-  // Step 2: Double progression (RPE ~8)
-  if(lastR<maxReps){
-    return{type:'progress',text:`Today: try ${lastW}kg \u00d7 ${lastR+1} reps`,weight:lastW,reps:lastR+1};
-  }else{
-    const newW=Math.round((lastW+inc)*2)/2;
-    return{type:'progress',text:`Top of range hit \u2014 increase to ${newW}kg \u00d7 ${minReps} reps`,weight:newW,reps:minReps};
-  }
+  // Choose progression factor based on RPE difficulty
+  let factor;
+  if(avgRPE>=8.5)factor=1.02;      // ~2% 1RM gain
+  else if(avgRPE>=7.5)factor=1.03; // ~3% 1RM gain
+  else factor=1.05;                 // felt easy — push harder
+
+  const targetE1RM=bestE1RM*factor;
+  const rawW=weightFromE1RM(targetE1RM,midReps);
+  const targetW=Math.max(inc,Math.round(rawW/inc)*inc);
+
+  return{type:'progress',text:`Est. 1RM ${bestE1RM.toFixed(1)}kg \u2192 target ${targetE1RM.toFixed(1)}kg. Lift ${targetW}kg \u00d7 ${midReps} reps`,weight:targetW,reps:midReps};
 }
 
 function checkRegression(exId,currentW,currentR){
@@ -1181,10 +1275,8 @@ function showRoutineDetail(routineId){
 
   html+=`<div class="flex gap-8 mt-16">`;
   html+=`<button class="btn btn-primary" style="flex:1" onclick="startRoutine('${r.id}');document.getElementById('routine-modal').classList.remove('show')">Start</button>`;
-  if(r.preset){
-    html+=`<button class="btn btn-secondary" style="flex:1" onclick="duplicateRoutine('${r.id}');document.getElementById('routine-modal').classList.remove('show')">Duplicate</button>`;
-  }else{
-    html+=`<button class="btn btn-secondary" onclick="editRoutine('${r.id}');document.getElementById('routine-modal').classList.remove('show')">Edit</button>`;
+  html+=`<button class="btn btn-secondary" onclick="editRoutineOrPreset('${r.id}');document.getElementById('routine-modal').classList.remove('show')">Edit</button>`;
+  if(!r.preset){
     html+=`<button class="btn btn-secondary" style="color:var(--danger)" onclick="deleteRoutine('${r.id}');document.getElementById('routine-modal').classList.remove('show')">Delete</button>`;
   }
   html+=`</div>`;
@@ -1222,6 +1314,25 @@ function editRoutine(id){
   builderExercises=JSON.parse(JSON.stringify(r.exercises));
   routineBuilderActive=true;
   renderRoutines();
+}
+
+function editRoutineOrPreset(id){
+  const all=getAllRoutines();
+  const r=all.find(x=>x.id===id);
+  if(!r)return;
+  // If it's an unmodified preset, clone it into custom storage with the same ID so it overrides
+  const custom=getRoutines();
+  if(!custom.find(c=>c.id===id)){
+    const clone={id:r.id,name:r.name,preset:false,exercises:JSON.parse(JSON.stringify(r.exercises))};
+    custom.push(clone);
+    saveRoutines(custom);
+  }
+  editingRoutineId=id;
+  const target=getRoutines().find(c=>c.id===id);
+  builderName=target.name;
+  builderExercises=JSON.parse(JSON.stringify(target.exercises));
+  routineBuilderActive=true;
+  go('routines');
 }
 
 function startBuilder(){
@@ -1383,7 +1494,8 @@ function startRoutine(routineId){
 /* ============================================================
    SCREEN: LOG (WORKOUT LOGGER)
    ============================================================ */
-let timerInterval=null;let timerRemaining=0;let timerDuration=90;
+let timerInterval=null;let timerEndAt=0;let timerDuration=90;let timerRemaining=90;
+let workoutTimerInterval=null;
 
 function renderLog(){
   const el=document.getElementById('screen-log');
@@ -1391,8 +1503,11 @@ function renderLog(){
 
   if(!active){
     el.innerHTML=`<h2>Workout Log</h2><div class="empty-state"><svg viewBox="0 0 24 24"><path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29z"/></svg><p>No active workout</p><p class="text-xs text-muted mt-8">Start a routine from the Routines or Home screen</p></div>`;
+    stopWorkoutTimer();
     return;
   }
+
+  if(active.startTime)startWorkoutTimer(active.startTime);
 
   timerDuration=getTimerDur();
   let totalSets=0,completedSets=0;
@@ -1405,7 +1520,7 @@ function renderLog(){
 
   active.exercises.forEach((ex,ei)=>{
     const exInfo=EXERCISE_MAP[ex.exerciseId];
-    html+=`<div class="log-exercise"><div class="log-exercise-header" onclick="showExPopup('${ex.exerciseId}')"><div><div class="log-exercise-name">${ex.exerciseName}</div><div class="log-exercise-target">${ex.targetSets} sets \u00d7 ${ex.targetReps} reps @ RPE ${ex.targetRPE}</div></div></div>`;
+    html+=`<div class="log-exercise"><div class="log-exercise-header"><div onclick="showExPopup('${ex.exerciseId}')" style="flex:1;cursor:pointer"><div class="log-exercise-name">${ex.exerciseName}</div><div class="log-exercise-target">${ex.targetSets} sets \u00d7 ${ex.targetReps} reps @ RPE ${ex.targetRPE}</div></div><div class="flex gap-8 items-center"><button class="log-ex-action" onclick="openMidWorkoutPicker('swap',${ei})" title="Swap exercise"><svg viewBox="0 0 24 24"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg></button><button class="log-ex-action danger" onclick="removeMidWorkoutEx(${ei})" title="Remove exercise"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button></div></div>`;
 
     // Last performance
     if(ex.lastPerformance){
@@ -1439,11 +1554,13 @@ function renderLog(){
         }
       }
     });
+    html+=`<div class="log-sets-controls"><button class="btn btn-sm btn-secondary" onclick="addSetToEx(${ei})">+ Set</button><button class="btn btn-sm btn-secondary" onclick="removeSetFromEx(${ei})"${ex.sets.length<=1?' style="opacity:.4"':''}>&#8722; Set</button></div>`;
     html+=`</div>`;
   });
 
   html+=`<button class="btn btn-primary btn-block mt-16" onclick="finishWorkout()">Finish Workout</button>`;
-  html+=`<button class="btn btn-secondary btn-block mt-8" onclick="if(confirm('Discard this workout?')){clearActive();renderLog()}">Discard Workout</button>`;
+  html+=`<button class="btn btn-secondary btn-block mt-8" onclick="openMidWorkoutPicker('add',-1)">+ Add Exercise</button>`;
+  html+=`<button class="btn btn-secondary btn-block mt-8 btn-destructive" onclick="if(confirm('Discard this workout?')){clearActive();renderLog()}">Discard Workout</button>`;
   html+=`<div style="height:40px"></div>`;
   el.innerHTML=html;
 }
@@ -1468,23 +1585,29 @@ function toggleSet(ei,si){
 /* REST TIMER */
 function startRestTimer(){
   timerDuration=getTimerDur();
-  timerRemaining=timerDuration;
+  timerEndAt=Date.now()+timerDuration*1000;
   const el=document.getElementById('rest-timer');
   el.classList.add('show');
+  document.getElementById('timer-pill').classList.remove('show');
+  timerRemaining=timerDuration;
   updateTimerDisplay();
   updateTimerDurButtons();
   clearInterval(timerInterval);
-  timerInterval=setInterval(()=>{
-    timerRemaining--;
-    if(timerRemaining<=0){skipTimer();showToast('Rest complete \u2014 next set!');}
-    else updateTimerDisplay();
-  },1000);
+  timerInterval=setInterval(tickRestTimer,500);
+}
+
+function tickRestTimer(){
+  const remaining=Math.ceil((timerEndAt-Date.now())/1000);
+  if(remaining<=0){skipTimer();showToast('Rest complete \u2014 next set!');}
+  else{timerRemaining=remaining;updateTimerDisplay();}
 }
 
 function updateTimerDisplay(){
   const m=Math.floor(timerRemaining/60);
   const s=timerRemaining%60;
-  document.getElementById('timer-display').textContent=`${m}:${s.toString().padStart(2,'0')}`;
+  const txt=`${m}:${s.toString().padStart(2,'0')}`;
+  document.getElementById('timer-display').textContent=txt;
+  document.getElementById('pill-display').textContent=txt;
 }
 
 function updateTimerDurButtons(){
@@ -1496,6 +1619,7 @@ function updateTimerDurButtons(){
 function setTimerDur(d){
   timerDuration=d;
   setTimerDurPref(d);
+  timerEndAt=Date.now()+d*1000;
   timerRemaining=d;
   updateTimerDisplay();
   updateTimerDurButtons();
@@ -1503,7 +1627,130 @@ function setTimerDur(d){
 
 function skipTimer(){
   clearInterval(timerInterval);
+  timerEndAt=0;
   document.getElementById('rest-timer').classList.remove('show');
+  document.getElementById('timer-pill').classList.remove('show');
+}
+
+function minimiseTimer(){
+  document.getElementById('rest-timer').classList.remove('show');
+  document.getElementById('timer-pill').classList.add('show');
+}
+
+function restoreTimer(){
+  document.getElementById('rest-timer').classList.add('show');
+  document.getElementById('timer-pill').classList.remove('show');
+}
+
+/* MID-WORKOUT EXERCISE MANAGEMENT */
+let midPickerMode='add';let midPickerTargetIdx=-1;
+
+function openMidWorkoutPicker(mode,idx){
+  midPickerMode=mode;midPickerTargetIdx=idx;
+  document.getElementById('mid-picker-title').textContent=mode==='swap'?'Swap Exercise':'Add Exercise';
+  const inp=document.getElementById('mid-picker-search');
+  inp.value='';
+  updateMidPickerSearch('');
+  document.getElementById('mid-workout-picker').classList.add('show');
+  setTimeout(()=>inp.focus(),150);
+}
+
+function closeMidWorkoutPicker(){
+  document.getElementById('mid-workout-picker').classList.remove('show');
+}
+
+function updateMidPickerSearch(val){
+  const container=document.getElementById('mid-picker-results');
+  if(!container)return;
+  const all=getAllExercises();
+  const results=val.length>=1?all.filter(e=>e.name.toLowerCase().includes(val.toLowerCase())||e.muscle.toLowerCase().includes(val.toLowerCase())):all.slice(0,30);
+  container.innerHTML=results.slice(0,30).map(e=>
+    `<div class="ex-card" style="margin:0 0 4px;border-radius:10px;background:var(--input)" onclick="selectMidWorkoutEx('${e.id}')"><div><div class="ex-card-name">${e.name}</div><div class="ex-card-meta">${e.equip}</div></div><span class="badge">${e.muscle}</span></div>`
+  ).join('');
+}
+
+function selectMidWorkoutEx(exId){
+  closeMidWorkoutPicker();
+  if(midPickerMode==='swap')swapActiveEx(midPickerTargetIdx,exId);
+  else addActiveEx(exId);
+}
+
+function swapActiveEx(idx,newExId){
+  const active=getActive();if(!active)return;
+  const old=active.exercises[idx];
+  const rec=getOverloadRec(newExId,old.targetReps,old.targetRPE);
+  const last=getLastPerformance(newExId);
+  active.exercises[idx]={
+    exerciseId:newExId,
+    exerciseName:(EXERCISE_MAP[newExId]||{}).name||newExId,
+    targetSets:old.targetSets,targetReps:old.targetReps,targetRPE:old.targetRPE,
+    recommendation:rec,lastPerformance:last,
+    sets:Array.from({length:old.targetSets},()=>({weight:rec.weight||0,reps:rec.reps||0,rpe:old.targetRPE,completed:false}))
+  };
+  saveActive(active);renderLog();
+}
+
+function addActiveEx(exId){
+  const active=getActive();if(!active)return;
+  const rec=getOverloadRec(exId,'8-10',8);
+  const last=getLastPerformance(exId);
+  active.exercises.push({
+    exerciseId:exId,exerciseName:(EXERCISE_MAP[exId]||{}).name||exId,
+    targetSets:3,targetReps:'8-10',targetRPE:8,
+    recommendation:rec,lastPerformance:last,
+    sets:Array.from({length:3},()=>({weight:rec.weight||0,reps:rec.reps||0,rpe:8,completed:false}))
+  });
+  saveActive(active);renderLog();
+}
+
+function removeMidWorkoutEx(idx){
+  const active=getActive();if(!active)return;
+  if(active.exercises.length<=1){showToast('Need at least one exercise');return}
+  if(!confirm(`Remove ${active.exercises[idx].exerciseName}?`))return;
+  active.exercises.splice(idx,1);
+  saveActive(active);renderLog();
+}
+
+function addSetToEx(idx){
+  const active=getActive();if(!active)return;
+  const ex=active.exercises[idx];
+  const last=ex.sets[ex.sets.length-1]||{weight:0,reps:0,rpe:ex.targetRPE};
+  ex.sets.push({weight:last.weight,reps:last.reps,rpe:last.rpe,completed:false});
+  ex.targetSets=ex.sets.length;
+  saveActive(active);renderLog();
+}
+
+function removeSetFromEx(idx){
+  const active=getActive();if(!active)return;
+  const ex=active.exercises[idx];
+  if(ex.sets.length<=1){showToast('Need at least 1 set');return}
+  ex.sets.pop();
+  ex.targetSets=ex.sets.length;
+  saveActive(active);renderLog();
+}
+
+/* WORKOUT ELAPSED TIMER */
+function startWorkoutTimer(startTime){
+  stopWorkoutTimer();
+  function updateWTimer(){
+    const elapsed=Math.floor((Date.now()-startTime)/1000);
+    const h=Math.floor(elapsed/3600);
+    const m=Math.floor((elapsed%3600)/60);
+    const s=elapsed%60;
+    const txt=h>0?`${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`:`${m}:${s.toString().padStart(2,'0')}`;
+    const el=document.getElementById('workout-timer-display');
+    if(el)el.textContent=txt;
+  }
+  updateWTimer();
+  workoutTimerInterval=setInterval(updateWTimer,1000);
+  document.getElementById('workout-timer-pill').classList.add('show');
+}
+
+function stopWorkoutTimer(){
+  clearInterval(workoutTimerInterval);
+  workoutTimerInterval=null;
+  const pill=document.getElementById('workout-timer-pill');
+  if(pill)pill.classList.remove('show');
 }
 
 /* EXERCISE POPUP */
@@ -1660,7 +1907,7 @@ function buildCopyText(){
 
 function copyAndFinish(){
   navigator.clipboard.writeText(buildCopyText()).then(()=>{
-    showToast('Copied! Paste into WHOOP Strength Trainer notes');
+    showToast('Copied to clipboard!');
   }).catch(()=>{showToast('Copy failed \u2014 try manually')});
   saveAndClose();
 }
@@ -1678,6 +1925,7 @@ function saveAndClose(){
   sessions.push(active);
   saveSessions(sessions);
   clearActive();
+  stopWorkoutTimer();
   document.getElementById('summary-modal').classList.remove('show');
   go('home');
 }
@@ -1871,6 +2119,8 @@ function showApp(){
   document.getElementById('welcome').classList.add('hide');
   document.getElementById('name-setup').classList.remove('show');
   document.getElementById('app').classList.add('show');
+  const active=getActive();
+  if(active&&active.startTime)startWorkoutTimer(active.startTime);
   renderHome();
 }
 
@@ -1887,20 +2137,6 @@ async function signInWithGoogle(){
     }
     const{error}=await supa.auth.signInWithOAuth({
       provider:'google',
-      options:{redirectTo:window.location.href}
-    });
-    if(error)showToast('Sign-in failed: '+error.message);
-  }catch(e){showToast('Error: '+e.message)}
-}
-
-async function signInWithApple(){
-  try{
-    if(window.location.protocol==='file:'){
-      showToast('Open via http:// — run: python3 -m http.server 8080');
-      return;
-    }
-    const{error}=await supa.auth.signInWithOAuth({
-      provider:'apple',
       options:{redirectTo:window.location.href}
     });
     if(error)showToast('Sign-in failed: '+error.message);
@@ -1947,6 +2183,15 @@ async function init(){
     showAuth();
   }
 }
+
+// Re-sync rest timer when user returns to the app
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&timerEndAt>0){
+    const remaining=Math.ceil((timerEndAt-Date.now())/1000);
+    if(remaining<=0){skipTimer();showToast('Rest complete \u2014 next set!');}
+    else{timerRemaining=remaining;updateTimerDisplay();}
+  }
+});
 
 // Listen for auth state changes (handles OAuth redirect callback)
 supa.auth.onAuthStateChange(async(event,session)=>{
