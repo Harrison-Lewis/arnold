@@ -183,11 +183,18 @@ h3{font-size:17px;font-weight:600;margin-bottom:8px;color:var(--text)}
 #mid-workout-picker .picker-sheet{background:var(--card);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px 16px calc(24px + var(--safe-b));max-height:78vh;display:flex;flex-direction:column}
 #mid-picker-results{overflow-y:auto;flex:1;margin-top:10px}
 /* BODY MAP */
-.body-map-wrap{display:flex;gap:12px;justify-content:center;margin-bottom:12px}
-.body-map-wrap svg{width:120px;height:220px;flex-shrink:0}
+.body-map-wrap{display:flex;gap:10px;align-items:flex-start;margin-bottom:4px}
+.body-map-svgs{display:flex;gap:6px;flex-shrink:0}
+.body-map-svgs svg{width:76px;height:auto;display:block}
+.body-map-label{font-size:10px;color:var(--text3);text-align:center;margin-top:2px}
+.body-map-status{flex:1;min-width:0}
+.body-map-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid rgba(60,60,67,0.08)}
+.body-map-row:last-child{border-bottom:none}
+.body-map-bar{width:48px;height:4px;border-radius:2px;background:rgba(60,60,67,0.1);margin-right:6px;flex-shrink:0}
+.body-map-bar-fill{height:100%;border-radius:2px;transition:width .4s}
+.body-map-legend{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:11px;color:var(--text3)}
+.body-map-legend-grad{width:80px;height:6px;border-radius:3px;background:linear-gradient(to right,#34C759,#FFCC00,#FF9500,#FF3B30);flex-shrink:0}
 .body-map-tooltip{text-align:center;font-size:12px;color:var(--text3);min-height:18px;margin-top:4px}
-.body-map-legend{display:flex;align-items:center;gap:6px;justify-content:center;margin-top:8px;font-size:11px;color:var(--text3)}
-.body-map-legend-grad{width:80px;height:8px;border-radius:4px;background:linear-gradient(to right,#B8D4FF,#34C759,#FF9500,#FF3B30)}
 /* PROFILE FIELDS */
 .profile-field{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:0.5px solid var(--divider)}
 .profile-field label{font-size:14px;color:var(--text2)}
@@ -2011,6 +2018,146 @@ function toggleSession(idx){
   if(el)el.classList.toggle('open');
 }
 
+/* ============================================================
+   MUSCLE RECOVERY MODEL
+   Science basis: 48h exponential decay (Schoenfeld/Ogborn-Krieger
+   meta-analyses — most muscles recover in 48-72h at moderate load).
+   Fatigue score = Σ(sets × RPE_intensity × e^(-age_hours/48))
+   Normalised so ~6 hard weighted sets = 1.0 (maximally fatigued).
+   ============================================================ */
+function calcMuscleFatigue(sessions){
+  const muscles=['Chest','Back','Shoulders','Biceps','Triceps','Legs','Core'];
+  const raw={};muscles.forEach(m=>raw[m]=0);
+  const now=Date.now();
+  const cutoff=now-7*24*3600000;
+  sessions.filter(s=>(s.startTime||0)>cutoff).forEach(s=>{
+    const ageH=(now-(s.startTime||now))/3600000;
+    const decay=Math.exp(-ageH/48);
+    s.exercises.forEach(ex=>{
+      const exInfo=EXERCISE_MAP[ex.exerciseId];
+      if(!exInfo||!raw.hasOwnProperty(exInfo.muscle))return;
+      const done=ex.sets.filter(st=>st.completed);
+      if(!done.length)return;
+      const avgRPE=done.reduce((a,st)=>a+(st.rpe||8),0)/done.length;
+      const intensity=Math.max(0.1,(avgRPE-5)/5); // RPE6→0.2, RPE10→1.0
+      raw[exInfo.muscle]+=done.length*intensity*decay;
+    });
+  });
+  const out={};
+  muscles.forEach(m=>out[m]=Math.min(raw[m]/6,1)); // 6 weighted sets = max
+  return out;
+}
+
+function fatigueColor(f){
+  f=Math.max(0,Math.min(1,f));
+  const stops=[{t:0,r:52,g:199,b:89},{t:0.4,r:255,g:204,b:0},{t:0.7,r:255,g:149,b:0},{t:1,r:255,g:59,b:48}];
+  let lo=stops[0],hi=stops[stops.length-1];
+  for(let i=0;i<stops.length-1;i++){if(f>=stops[i].t&&f<=stops[i+1].t){lo=stops[i];hi=stops[i+1];break}}
+  const t=lo.t===hi.t?0:(f-lo.t)/(hi.t-lo.t);
+  return`rgb(${Math.round(lo.r+(hi.r-lo.r)*t)},${Math.round(lo.g+(hi.g-lo.g)*t)},${Math.round(lo.b+(hi.b-lo.b)*t)})`;
+}
+
+function fatigueLabel(f){
+  if(f<0.2)return'Recovered';
+  if(f<0.45)return'Light';
+  if(f<0.7)return'Moderate';
+  return'Needs rest';
+}
+
+function lastTrainedLabel(muscle,sessions){
+  const now=Date.now();
+  let latest=null;
+  sessions.forEach(s=>s.exercises.forEach(ex=>{
+    const exInfo=EXERCISE_MAP[ex.exerciseId];
+    if(!exInfo||exInfo.muscle!==muscle)return;
+    if(ex.sets.some(st=>st.completed)&&(s.startTime||0)>( latest||0))latest=s.startTime;
+  }));
+  if(!latest)return'Not recently';
+  const h=Math.round((now-latest)/3600000);
+  if(h<24)return`${h}h ago`;
+  return`${Math.floor(h/24)}d ago`;
+}
+
+function renderBodyMap(fatigue,sessions){
+  const c=m=>fatigueColor(fatigue[m]||0);
+  const dim='#C7C7CC';
+
+  const frontSVG=`<svg viewBox="0 0 100 210" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="14" r="11" fill="${dim}" opacity=".5"/>
+    <rect x="45" y="24" width="10" height="8" rx="3" fill="${dim}" opacity=".5"/>
+    <ellipse cx="26" cy="47" rx="13" ry="9" fill="${c('Shoulders')}"/>
+    <ellipse cx="74" cy="47" rx="13" ry="9" fill="${c('Shoulders')}"/>
+    <path d="M37,34 Q50,41 63,34 L67,70 Q50,75 33,70 Z" fill="${c('Chest')}"/>
+    <ellipse cx="17" cy="76" rx="8" ry="18" fill="${c('Biceps')}"/>
+    <ellipse cx="83" cy="76" rx="8" ry="18" fill="${c('Biceps')}"/>
+    <ellipse cx="13" cy="108" rx="6" ry="13" fill="${dim}" opacity=".35"/>
+    <ellipse cx="87" cy="108" rx="6" ry="13" fill="${dim}" opacity=".35"/>
+    <rect x="33" y="69" width="34" height="44" rx="7" fill="${c('Core')}"/>
+    <path d="M33,113 Q50,120 67,113 L70,130 Q50,135 30,130 Z" fill="${dim}" opacity=".4"/>
+    <ellipse cx="38" cy="158" rx="14" ry="27" fill="${c('Legs')}"/>
+    <ellipse cx="62" cy="158" rx="14" ry="27" fill="${c('Legs')}"/>
+    <ellipse cx="38" cy="189" rx="10" ry="7" fill="${dim}" opacity=".35"/>
+    <ellipse cx="62" cy="189" rx="10" ry="7" fill="${dim}" opacity=".35"/>
+    <ellipse cx="38" cy="204" rx="9" ry="10" fill="${dim}" opacity=".25"/>
+    <ellipse cx="62" cy="204" rx="9" ry="10" fill="${dim}" opacity=".25"/>
+  </svg>`;
+
+  const backSVG=`<svg viewBox="0 0 100 210" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="14" r="11" fill="${dim}" opacity=".5"/>
+    <rect x="45" y="24" width="10" height="8" rx="3" fill="${dim}" opacity=".5"/>
+    <ellipse cx="26" cy="47" rx="13" ry="9" fill="${c('Shoulders')}"/>
+    <ellipse cx="74" cy="47" rx="13" ry="9" fill="${c('Shoulders')}"/>
+    <path d="M37,34 Q50,41 63,34 L61,54 Q50,58 39,54 Z" fill="${c('Back')}"/>
+    <path d="M36,52 L30,57 L28,96 L36,99 Z" fill="${c('Back')}"/>
+    <path d="M64,52 L70,57 L72,96 L64,99 Z" fill="${c('Back')}"/>
+    <rect x="36" y="53" width="28" height="46" rx="4" fill="${c('Back')}"/>
+    <ellipse cx="17" cy="76" rx="8" ry="18" fill="${c('Triceps')}"/>
+    <ellipse cx="83" cy="76" rx="8" ry="18" fill="${c('Triceps')}"/>
+    <ellipse cx="13" cy="108" rx="6" ry="13" fill="${dim}" opacity=".35"/>
+    <ellipse cx="87" cy="108" rx="6" ry="13" fill="${dim}" opacity=".35"/>
+    <rect x="36" y="99" width="28" height="16" rx="4" fill="${dim}" opacity=".45"/>
+    <ellipse cx="38" cy="125" rx="15" ry="13" fill="${c('Legs')}"/>
+    <ellipse cx="62" cy="125" rx="15" ry="13" fill="${c('Legs')}"/>
+    <ellipse cx="38" cy="158" rx="13" ry="25" fill="${c('Legs')}"/>
+    <ellipse cx="62" cy="158" rx="13" ry="25" fill="${c('Legs')}"/>
+    <ellipse cx="38" cy="193" rx="9" ry="13" fill="${dim}" opacity=".3"/>
+    <ellipse cx="62" cy="193" rx="9" ry="13" fill="${dim}" opacity=".3"/>
+  </svg>`;
+
+  const muscles=['Chest','Back','Shoulders','Biceps','Triceps','Legs','Core'];
+  const rows=muscles.map(m=>{
+    const f=fatigue[m]||0;
+    const pct=Math.round((1-f)*100);
+    const last=lastTrainedLabel(m,sessions);
+    return`<div class="body-map-row">
+      <div style="font-size:12px;font-weight:500;width:62px;flex-shrink:0">${m}</div>
+      <div class="flex items-center" style="flex:1;gap:4px">
+        <div class="body-map-bar"><div class="body-map-bar-fill" style="width:${pct}%;background:${fatigueColor(f)}"></div></div>
+        <div style="font-size:11px;color:${fatigueColor(f)};font-weight:600;width:70px">${fatigueLabel(f)}</div>
+      </div>
+      <div style="font-size:10px;color:var(--text3);flex-shrink:0">${last}</div>
+    </div>`;
+  }).join('');
+
+  return`<div class="card">
+    <h3>Muscle Recovery</h3>
+    <div class="text-xs text-muted" style="margin-bottom:12px">48h recovery model · last 7 days</div>
+    <div class="body-map-wrap">
+      <div class="body-map-svgs">
+        <div>${frontSVG}<div class="body-map-label">Front</div></div>
+        <div>${backSVG}<div class="body-map-label">Back</div></div>
+      </div>
+      <div class="body-map-status">${rows}</div>
+    </div>
+    <div class="body-map-legend">
+      <div class="body-map-legend-grad"></div>
+      <div class="flex justify-between" style="width:80px;font-size:10px">
+        <span>Fresh</span><span>Fatigued</span>
+      </div>
+    </div>
+  </div>`;
+}
+
 function renderDashboard(sessions){
   let html='';
 
@@ -2032,6 +2179,9 @@ function renderDashboard(sessions){
   bestStreak=Math.max(bestStreak,streak);
 
   html+=`<div class="stats-row"><div class="stat-box"><div class="stat-val">${totalSessions}</div><div class="stat-label">Sessions</div></div><div class="stat-box"><div class="stat-val">${totalTonnes}t</div><div class="stat-label">Volume</div></div><div class="stat-box"><div class="stat-val">${currentStreak}</div><div class="stat-label">Streak</div></div><div class="stat-box"><div class="stat-val">${bestStreak}</div><div class="stat-label">Best</div></div></div>`;
+
+  // Muscle recovery body map
+  html+=renderBodyMap(calcMuscleFatigue(sessions),sessions);
 
   // Volume chart
   html+=`<div class="card"><h3>Weekly Volume</h3><div class="chart-wrap tall"><canvas id="vol-chart"></canvas></div></div>`;
