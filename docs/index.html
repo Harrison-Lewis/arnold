@@ -325,7 +325,7 @@ h3{font-size:17px;font-weight:600;margin-bottom:8px;color:var(--text)}
 <body>
 
 <!-- LOADING -->
-<div id="loading-overlay"><div class="spinner"></div><div style="color:var(--text3);font-size:14px">Loading…</div></div>
+<div id="loading-overlay" class="show"><div class="spinner"></div><div style="color:var(--text3);font-size:14px">Loading…</div></div>
 
 <!-- AUTH SCREEN -->
 <div id="welcome">
@@ -860,17 +860,21 @@ async function setUserName(name){
 }
 
 // --- Load all user data from Supabase into cache ---
+function withTimeout(promise,ms){
+  return Promise.race([promise,new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);
+}
+
 async function loadUserData(user){
   DB.userId=user.id;
   DB.userEmail=user.email||'';
   showLoading(true);
   try{
-    const [profRes,sessRes,routRes,exRes]=await Promise.all([
+    const [profRes,sessRes,routRes,exRes]=await withTimeout(Promise.all([
       supa.from('profiles').select('name').eq('id',user.id).single(),
       supa.from('sessions').select('*').eq('user_id',user.id).order('created_at'),
       supa.from('routines').select('*').eq('user_id',user.id).order('created_at'),
       supa.from('custom_exercises').select('*').eq('user_id',user.id).order('created_at'),
-    ]);
+    ]),12000);
     DB.userName=profRes.data?.name||'';
     DB.sessions=(sessRes.data||[]).map(s=>({
       id:s.id,routineName:s.routine_name,routineId:s.routine_name,
@@ -884,7 +888,9 @@ async function loadUserData(user){
     }));
     rebuildExerciseMap();
   }catch(e){
-    showToast('Failed to load data — check your connection');
+    // On timeout or error, let the user in anyway with whatever data we have
+    rebuildExerciseMap();
+    if(e.message!=='timeout')showToast('Some data failed to load');
   }finally{
     showLoading(false);
   }
@@ -2320,6 +2326,7 @@ function showApp(){
 }
 
 function showAuth(){
+  showLoading(false);
   document.getElementById('welcome').classList.remove('hide');
   document.getElementById('app').classList.remove('show');
 }
@@ -2365,7 +2372,15 @@ async function signOut(){
 
 async function init(){
   rebuildExerciseMap();
-  const{data:{session}}=await supa.auth.getSession();
+  let session=null;
+  try{
+    const res=await withTimeout(supa.auth.getSession(),10000);
+    session=res.data?.session||null;
+  }catch(e){
+    // getSession timed out or failed — show auth so user can sign in
+    showAuth();
+    return;
+  }
   if(session){
     await loadUserData(session.user);
     if(!DB.userName){
