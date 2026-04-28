@@ -836,25 +836,30 @@ async function loadUserData(user){
   DB.userId=user.id;
   DB.userEmail=user.email||'';
   showLoading(true);
-  const [profRes,sessRes,routRes,exRes]=await Promise.all([
-    supa.from('profiles').select('name').eq('id',user.id).single(),
-    supa.from('sessions').select('*').eq('user_id',user.id).order('created_at'),
-    supa.from('routines').select('*').eq('user_id',user.id).order('created_at'),
-    supa.from('custom_exercises').select('*').eq('user_id',user.id).order('created_at'),
-  ]);
-  DB.userName=profRes.data?.name||'';
-  DB.sessions=(sessRes.data||[]).map(s=>({
-    id:s.id,routineName:s.routine_name,routineId:s.routine_name,
-    date:s.date+'T00:00:00',startTime:new Date(s.created_at).getTime(),
-    endTime:new Date(s.created_at).getTime()+s.duration_minutes*60000,
-    exercises:s.exercises,
-  }));
-  DB.routines=(routRes.data||[]).map(r=>({id:r.id,name:r.name,exercises:r.exercises,preset:r.is_preset}));
-  DB.customExercises=(exRes.data||[]).map(e=>({
-    id:e.id,name:e.name,muscle:e.muscle_group,equip:e.equipment,inc:e.increment,custom:true
-  }));
-  rebuildExerciseMap();
-  showLoading(false);
+  try{
+    const [profRes,sessRes,routRes,exRes]=await Promise.all([
+      supa.from('profiles').select('name').eq('id',user.id).single(),
+      supa.from('sessions').select('*').eq('user_id',user.id).order('created_at'),
+      supa.from('routines').select('*').eq('user_id',user.id).order('created_at'),
+      supa.from('custom_exercises').select('*').eq('user_id',user.id).order('created_at'),
+    ]);
+    DB.userName=profRes.data?.name||'';
+    DB.sessions=(sessRes.data||[]).map(s=>({
+      id:s.id,routineName:s.routine_name,routineId:s.routine_name,
+      date:s.date+'T00:00:00',startTime:new Date(s.created_at).getTime(),
+      endTime:new Date(s.created_at).getTime()+s.duration_minutes*60000,
+      exercises:s.exercises,
+    }));
+    DB.routines=(routRes.data||[]).map(r=>({id:r.id,name:r.name,exercises:r.exercises,preset:r.is_preset}));
+    DB.customExercises=(exRes.data||[]).map(e=>({
+      id:e.id,name:e.name,muscle:e.muscle_group,equip:e.equipment,inc:e.increment,custom:true
+    }));
+    rebuildExerciseMap();
+  }catch(e){
+    showToast('Failed to load data — check your connection');
+  }finally{
+    showLoading(false);
+  }
 }
 
 function getAllRoutines(){
@@ -2182,6 +2187,27 @@ async function init(){
   }else{
     showAuth();
   }
+}
+
+/* PROFILE FIELDS */
+async function saveProfileField(field,value){
+  if(!DB.userId)return;
+  const update={};
+  if(field==='gender')update.gender=value;
+  if(field==='age')update.age=value;
+  await supa.from('profiles').update(update).eq('id',DB.userId);
+}
+
+/* FEEDBACK */
+function openFeedback(){document.getElementById('feedback-modal').classList.add('show')}
+function closeFeedback(){document.getElementById('feedback-modal').classList.remove('show')}
+async function submitFeedback(){
+  const txt=document.getElementById('feedback-text').value.trim();
+  if(!txt)return;
+  await supa.from('feedback').insert({user_id:DB.userId||null,message:txt}).catch(()=>{});
+  document.getElementById('feedback-text').value='';
+  closeFeedback();
+  showToast('Thanks for the feedback!');
 }
 
 // Re-sync rest timer when user returns to the app
