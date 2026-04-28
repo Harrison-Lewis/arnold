@@ -837,11 +837,15 @@ async function loadUserData(user){
   DB.userEmail=user.email||'';
   showLoading(true);
   try{
-    const [profRes,sessRes,routRes,exRes]=await Promise.all([
-      supa.from('profiles').select('name').eq('id',user.id).single(),
-      supa.from('sessions').select('*').eq('user_id',user.id).order('created_at'),
-      supa.from('routines').select('*').eq('user_id',user.id).order('created_at'),
-      supa.from('custom_exercises').select('*').eq('user_id',user.id).order('created_at'),
+    const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),10000));
+    const [profRes,sessRes,routRes,exRes]=await Promise.race([
+      Promise.all([
+        supa.from('profiles').select('name').eq('id',user.id).single(),
+        supa.from('sessions').select('*').eq('user_id',user.id).order('created_at'),
+        supa.from('routines').select('*').eq('user_id',user.id).order('created_at'),
+        supa.from('custom_exercises').select('*').eq('user_id',user.id).order('created_at'),
+      ]),
+      timeout
     ]);
     DB.userName=profRes.data?.name||'';
     DB.sessions=(sessRes.data||[]).map(s=>({
