@@ -1609,11 +1609,11 @@ function renderLog(){
       html+=`<select class="rpe-select" onchange="updateSet(${ei},${si},'rpe',+this.value)">${[6,7,8,9,10].map(v=>`<option value="${v}"${v===s.rpe?' selected':''}>${v}</option>`).join('')}</select>`;
       html+=`<div class="set-check${s.completed?' done':''}" onclick="toggleSet(${ei},${si})"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div></div>`;
 
-      // Regression warning
+      // Regression warning: compare set N against set N last session only (not the peak set)
       if(s.completed&&ex.lastPerformance){
-        const best=ex.lastPerformance.sets.reduce((b,st)=>(st.weight>=b.weight)?st:b,ex.lastPerformance.sets[0]);
-        if(s.weight<best.weight||s.reps<best.reps){
-          html+=`<div class="text-xs text-warn" style="padding-left:40px;margin-top:-4px;margin-bottom:4px">Performance regression detected</div>`;
+        const prev=ex.lastPerformance.sets[si];
+        if(prev&&(s.weight<prev.weight||s.reps<prev.reps)){
+          html+=`<div class="text-xs text-warn" style="padding-left:40px;margin-top:-4px;margin-bottom:4px">Below last session's set ${si+1}</div>`;
         }
       }
     });
