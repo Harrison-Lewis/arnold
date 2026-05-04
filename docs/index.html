@@ -356,6 +356,7 @@ h3{font-size:17px;font-weight:600;margin-bottom:8px;color:var(--text)}
     <div class="email" id="profile-email-display"></div>
     <div class="profile-field"><label>Gender</label><select id="profile-gender" onchange="saveProfileField('gender',this.value)"><option value="male">Male</option><option value="female">Female</option></select></div>
     <div class="profile-field"><label>Age</label><input type="number" id="profile-age" min="10" max="100" style="width:70px;padding:6px 10px;border-radius:8px;background:var(--input);font-size:14px" onchange="saveProfileField('age',+this.value)"></div>
+    <div class="profile-field"><label>Weight unit</label><select id="profile-unit" onchange="setUnit(this.value);closeProfileModal();renderScreen(currentScreen)" style="padding:6px 10px;border-radius:8px;background:var(--input);font-size:14px"><option value="kg">kg</option><option value="lbs">lbs</option></select></div>
     <div style="margin-top:20px"></div>
     <button class="btn btn-block btn-destructive" onclick="signOut()">Sign Out</button>
   </div>
@@ -803,6 +804,22 @@ function clearActive(){LS.del('wc_active')}
 function getTimerDur(){return LS.get('wc_timer_dur',90)}
 function setTimerDurPref(d){LS.set('wc_timer_dur',d)}
 
+// --- Weight unit pref ---
+function getUnit(){return LS.get('wc_unit','kg')}
+function setUnit(u){LS.set('wc_unit',u)}
+// Display a stored kg value in the user's preferred unit
+function displayW(kg){
+  if(!kg&&kg!==0)return '';
+  if(getUnit()==='lbs')return+(kg*2.20462).toFixed(1);
+  return kg;
+}
+// Convert a user-entered display value back to kg for storage
+function storeW(v){
+  if(getUnit()==='lbs')return+(v/2.20462).toFixed(2);
+  return+v;
+}
+function unitLabel(){return getUnit()}
+
 // --- Async writes: update cache immediately, then persist to Supabase ---
 async function saveSessions(s){
   DB.sessions=s;
@@ -864,10 +881,12 @@ function withTimeout(promise,ms){
   return Promise.race([promise,new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);
 }
 
+// Returns true if profile loaded successfully, false if timed out / errored
 async function loadUserData(user){
   DB.userId=user.id;
   DB.userEmail=user.email||'';
   showLoading(true);
+  let profileLoaded=false;
   try{
     const [profRes,sessRes,routRes,exRes]=await withTimeout(Promise.all([
       supa.from('profiles').select('name').eq('id',user.id).single(),
@@ -887,13 +906,13 @@ async function loadUserData(user){
       id:e.id,name:e.name,muscle:e.muscle_group,equip:e.equipment,inc:e.increment,custom:true
     }));
     rebuildExerciseMap();
+    profileLoaded=true;
   }catch(e){
-    // On timeout or error, let the user in anyway with whatever data we have
     rebuildExerciseMap();
-    if(e.message!=='timeout')showToast('Some data failed to load');
   }finally{
     showLoading(false);
   }
+  return profileLoaded;
 }
 
 function getAllRoutines(){
@@ -979,7 +998,8 @@ function getOverloadRec(exId,targetReps,targetRPE){
     if(recent[2]<=recent[0]&&recent[1]<=recent[0]){
       const deloadE1RM=bestE1RM*0.8;
       const deloadW=Math.max(inc,Math.round(weightFromE1RM(deloadE1RM,minReps)/inc)*inc);
-      return{type:'deload',text:`Deload \u2014 3 sessions stalled. Target ${deloadW}kg \u00d7 ${minReps} reps (80% of est. 1RM ${bestE1RM.toFixed(1)}kg)`,weight:deloadW,reps:minReps};
+      const u=unitLabel();
+      return{type:'deload',text:`Deload \u2014 3 sessions stalled. Target ${displayW(deloadW)}${u} \u00d7 ${minReps} reps (80% of est. 1RM ${displayW(bestE1RM).toFixed?displayW(bestE1RM).toFixed(1):displayW(bestE1RM)}${u})`,weight:deloadW,reps:minReps};
     }
   }
 
@@ -987,7 +1007,8 @@ function getOverloadRec(exId,targetReps,targetRPE){
   if(avgRPE>=9.5){
     // Very hard — stay at same relative intensity
     const holdW=Math.max(inc,Math.round(weightFromE1RM(bestE1RM,midReps)/inc)*inc);
-    return{type:'hold',text:`RPE ${avgRPE.toFixed(1)} last session \u2014 consolidate at ${holdW}kg \u00d7 ${midReps} reps (est. 1RM ${bestE1RM.toFixed(1)}kg)`,weight:holdW,reps:midReps};
+    const u=unitLabel();
+    return{type:'hold',text:`RPE ${avgRPE.toFixed(1)} last session \u2014 consolidate at ${displayW(holdW)}${u} \u00d7 ${midReps} reps (est. 1RM ${displayW(+bestE1RM.toFixed(1))}${u})`,weight:holdW,reps:midReps};
   }
 
   // Choose progression factor based on RPE difficulty
@@ -1000,7 +1021,8 @@ function getOverloadRec(exId,targetReps,targetRPE){
   const rawW=weightFromE1RM(targetE1RM,midReps);
   const targetW=Math.max(inc,Math.round(rawW/inc)*inc);
 
-  return{type:'progress',text:`Est. 1RM ${bestE1RM.toFixed(1)}kg \u2192 target ${targetE1RM.toFixed(1)}kg. Lift ${targetW}kg \u00d7 ${midReps} reps`,weight:targetW,reps:midReps};
+  const u=unitLabel();
+  return{type:'progress',text:`Est. 1RM ${displayW(+bestE1RM.toFixed(1))}${u} \u2192 target ${displayW(+targetE1RM.toFixed(1))}${u}. Lift ${displayW(targetW)}${u} \u00d7 ${midReps} reps`,weight:targetW,reps:midReps};
 }
 
 function checkRegression(exId,currentW,currentR){
@@ -1126,7 +1148,7 @@ function renderHome(){
     html+=`<div class="card"><h3>Last Session</h3>`;
     html+=`<div class="text-sm text-muted">${d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</div>`;
     html+=`<div style="font-weight:600;margin:4px 0">${lastSession.routineName}</div>`;
-    html+=`<div class="flex gap-16 mt-8"><div><span class="text-accent" style="font-weight:700">${vol.toLocaleString()}kg</span><div class="text-xs text-muted">Volume</div></div>`;
+    html+=`<div class="flex gap-16 mt-8"><div><span class="text-accent" style="font-weight:700">${displayW(vol).toLocaleString()}${unitLabel()}</span><div class="text-xs text-muted">Volume</div></div>`;
     html+=`<div><span class="text-accent" style="font-weight:700">${dur}min</span><div class="text-xs text-muted">Duration</div></div>`;
     html+=`<div><span class="text-accent" style="font-weight:700">${lastSession.exercises.length}</span><div class="text-xs text-muted">Exercises</div></div></div></div>`;
   }else{
@@ -1213,13 +1235,13 @@ function renderExerciseDetail(el){
   html+=`<div class="flex justify-between items-center mb-12"><div class="flex gap-8"><span class="badge">${ex.muscle}</span><span class="badge">${ex.equip}</span>${isCustom?'<span class="badge" style="background:rgba(60,60,67,.08);color:var(--text3)">Custom</span>':''}</div>${isCustom?`<button class="btn btn-sm btn-destructive" onclick="deleteCustomExercise('${ex.id}')">Delete</button>`:''}</div>`;
 
   if(pb){
-    html+=`<div class="card"><h3>Personal Best</h3><div style="font-size:24px;font-weight:800;color:var(--accent)">${pb.weight}kg \u00d7 ${pb.reps}</div><div class="text-sm text-muted">Est. 1RM: ${calcE1RM(pb.weight,pb.reps).toFixed(1)}kg</div></div>`;
+    html+=`<div class="card"><h3>Personal Best</h3><div style="font-size:24px;font-weight:800;color:var(--accent)">${displayW(pb.weight)}${unitLabel()} \u00d7 ${pb.reps}</div><div class="text-sm text-muted">Est. 1RM: ${displayW(+calcE1RM(pb.weight,pb.reps).toFixed(1))}${unitLabel()}</div></div>`;
   }
 
   if(last){
     html+=`<div class="card"><h3>Last Performance</h3><div class="text-sm text-muted">${new Date(last.date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</div>`;
     last.sets.forEach((s,i)=>{
-      html+=`<div class="text-sm" style="margin-top:4px">Set ${i+1}: ${s.weight}kg \u00d7 ${s.reps} reps${s.rpe?' (RPE '+s.rpe+')':''}</div>`;
+      html+=`<div class="text-sm" style="margin-top:4px">Set ${i+1}: ${displayW(s.weight)}${unitLabel()} \u00d7 ${s.reps} reps${s.rpe?' (RPE '+s.rpe+')':''}</div>`;
     });
     html+=`</div>`;
   }
@@ -1238,7 +1260,7 @@ function renderExerciseDetail(el){
     [...hist].reverse().forEach(h=>{
       html+=`<div style="padding:8px 0;border-bottom:0.5px solid rgba(60,60,67,0.12)"><div class="text-sm text-muted">${new Date(h.date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</div>`;
       h.sets.forEach((s,i)=>{
-        html+=`<div class="text-sm">Set ${i+1}: ${s.weight}kg \u00d7 ${s.reps}${s.rpe?' @ RPE '+s.rpe:''}</div>`;
+        html+=`<div class="text-sm">Set ${i+1}: ${displayW(s.weight)}${unitLabel()} \u00d7 ${s.reps}${s.rpe?' @ RPE '+s.rpe:''}</div>`;
       });
       html+=`</div>`;
     });
@@ -1553,7 +1575,7 @@ function renderLog(){
   active.exercises.forEach(ex=>{totalSets+=ex.sets.length;ex.sets.forEach(s=>{if(s.completed)completedSets++})});
   const pct=totalSets>0?Math.round(completedSets/totalSets*100):0;
 
-  let html=`<div class="log-progress"><div class="flex justify-between items-center mb-8"><h2 style="margin:0">${active.routineName}</h2><button class="btn btn-sm btn-primary" onclick="finishWorkout()">Finish</button></div>`;
+  let html=`<div class="log-progress"><div class="flex justify-between items-center mb-8"><h2 style="margin:0">${active.routineName}</h2></div>`;
   html+=`<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>`;
   html+=`<div class="progress-text">${completedSets} of ${totalSets} sets completed (${pct}%)</div></div>`;
 
@@ -1564,7 +1586,7 @@ function renderLog(){
     // Last performance
     if(ex.lastPerformance){
       const best=ex.lastPerformance.sets.reduce((b,s)=>(s.weight>=b.weight)?s:b,ex.lastPerformance.sets[0]);
-      html+=`<div class="log-last">Last: ${best.weight}kg \u00d7 ${best.reps} reps${best.rpe?' RPE '+best.rpe:''}</div>`;
+      html+=`<div class="log-last">Last: ${displayW(best.weight)}${unitLabel()} \u00d7 ${best.reps} reps${best.rpe?' RPE '+best.rpe:''}</div>`;
     }
 
     // Recommendation
@@ -1575,12 +1597,14 @@ function renderLog(){
     }
 
     // Set header
-    html+=`<div class="set-row" style="margin-bottom:4px"><div class="text-xs text-muted">#</div><div class="text-xs text-muted">kg</div><div class="text-xs text-muted">Reps</div><div class="text-xs text-muted">RPE</div><div></div></div>`;
+    html+=`<div class="set-row" style="margin-bottom:4px"><div class="text-xs text-muted">#</div><div class="text-xs text-muted">${unitLabel()}</div><div class="text-xs text-muted">Reps</div><div class="text-xs text-muted">RPE</div><div></div></div>`;
 
     // Sets
+    const wStep=getUnit()==='lbs'?1:0.5;
     ex.sets.forEach((s,si)=>{
+      const dispW=s.weight?displayW(s.weight):'';
       html+=`<div class="set-row"><div class="set-label">${si+1}</div>`;
-      html+=`<input class="set-input" type="number" step="0.5" min="0" value="${s.weight||''}" placeholder="0" onchange="updateSet(${ei},${si},'weight',+this.value)">`;
+      html+=`<input class="set-input" type="number" step="${wStep}" min="0" value="${dispW}" placeholder="0" onchange="updateSet(${ei},${si},'weight',storeW(+this.value))">`;
       html+=`<input class="set-input" type="number" min="0" value="${s.reps||''}" placeholder="0" onchange="updateSet(${ei},${si},'reps',+this.value)">`;
       html+=`<select class="rpe-select" onchange="updateSet(${ei},${si},'rpe',+this.value)">${[6,7,8,9,10].map(v=>`<option value="${v}"${v===s.rpe?' selected':''}>${v}</option>`).join('')}</select>`;
       html+=`<div class="set-check${s.completed?' done':''}" onclick="toggleSet(${ei},${si})"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div></div>`;
@@ -1901,7 +1925,7 @@ function showSummary(active,dur,totalVol,prs){
   const dateStr=d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
 
   let html=`<div class="summary-glow"><h2>${active.routineName}</h2><div class="date">${dateStr} \u2022 ${dur} min</div>`;
-  html+=`<div class="summary-stats"><div class="summary-stat"><div class="val">${totalVol.toLocaleString()}<span style="font-size:14px">kg</span></div><div class="label">Volume</div></div>`;
+  html+=`<div class="summary-stats"><div class="summary-stat"><div class="val">${displayW(totalVol).toLocaleString()}<span style="font-size:14px">${unitLabel()}</span></div><div class="label">Volume</div></div>`;
 
   let completedCount=0;
   active.exercises.forEach(ex=>ex.sets.forEach(s=>{if(s.completed)completedCount++}));
@@ -1912,7 +1936,7 @@ function showSummary(active,dur,totalVol,prs){
   if(prs.length>0){
     html+=`<div class="summary-prs"><h4>\u{1f3c6} Personal Records</h4>`;
     prs.forEach(pr=>{
-      html+=`<div class="text-sm text-gold">${pr.name} \u2014 new est. 1RM: ${pr.e1rm.toFixed(1)}kg</div>`;
+      html+=`<div class="text-sm text-gold">${pr.name} \u2014 new est. 1RM: ${displayW(+pr.e1rm.toFixed(1))}${unitLabel()}</div>`;
     });
     html+=`</div>`;
   }
@@ -1924,7 +1948,7 @@ function showSummary(active,dur,totalVol,prs){
     if(completed.length===0)return;
     html+=`<div class="summary-ex"><h4>${ex.exerciseName}</h4>`;
     completed.forEach((s,i)=>{
-      html+=`<div class="summary-set">Set ${i+1}: ${s.weight}kg \u00d7 ${s.reps} reps (RPE ${s.rpe})</div>`;
+      html+=`<div class="summary-set">Set ${i+1}: ${displayW(s.weight)}${unitLabel()} \u00d7 ${s.reps} reps (RPE ${s.rpe})</div>`;
     });
     html+=`</div>`;
   });
@@ -1951,14 +1975,14 @@ function buildCopyText(){
     if(completed.length===0)return;
     txt+=`${ex.exerciseName}\n`;
     completed.forEach((s,i)=>{
-      txt+=`  Set ${i+1}: ${s.weight}kg \u00d7 ${s.reps} reps (RPE ${s.rpe})\n`;
+      txt+=`  Set ${i+1}: ${displayW(s.weight)}${unitLabel()} \u00d7 ${s.reps} reps (RPE ${s.rpe})\n`;
     });
     txt+=`\n`;
   });
 
-  txt+=`Total Volume: ${totalVol.toLocaleString()}kg\n`;
+  txt+=`Total Volume: ${displayW(totalVol).toLocaleString()}${unitLabel()}\n`;
   if(prs.length>0){
-    txt+=`Personal Records: ${prs.map(p=>`${p.name} (new 1RM: ${p.e1rm.toFixed(1)}kg)`).join(', ')}\n`;
+    txt+=`Personal Records: ${prs.map(p=>`${p.name} (new 1RM: ${displayW(+p.e1rm.toFixed(1))}${unitLabel()})`).join(', ')}\n`;
   }
   return txt;
 }
@@ -2014,7 +2038,7 @@ function renderHistory(){
           completed.forEach(st=>{vol+=(st.weight||0)*(st.reps||0)});
         });
 
-        html+=`<div class="card session-card" onclick="toggleSession(${sessions.length-1-idx})"><div class="flex justify-between items-center"><div><div style="font-weight:700">${s.routineName}</div><div class="date">${d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</div></div><div style="text-align:right"><div class="vol">${vol.toLocaleString()}kg</div><div class="text-xs text-muted">${dur}min \u2022 ${exCount} exercises</div></div></div>`;
+        html+=`<div class="card session-card" onclick="toggleSession(${sessions.length-1-idx})"><div class="flex justify-between items-center"><div><div style="font-weight:700">${s.routineName}</div><div class="date">${d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</div></div><div style="text-align:right"><div class="vol">${displayW(vol).toLocaleString()}${unitLabel()}</div><div class="text-xs text-muted">${dur}min \u2022 ${exCount} exercises</div></div></div>`;
         html+=`<div class="session-expand" id="session-${sessions.length-1-idx}">`;
 
         s.exercises.forEach(ex=>{
@@ -2037,7 +2061,7 @@ function renderHistory(){
 
           html+=`<div class="session-ex"><strong>${ex.exerciseName||ex.exerciseId}${arrow}</strong>`;
           completed.forEach((st,i)=>{
-            html+=`<div class="session-set">Set ${i+1}: ${st.weight}kg \u00d7 ${st.reps}${st.rpe?' @ RPE '+st.rpe:''}</div>`;
+            html+=`<div class="session-set">Set ${i+1}: ${displayW(st.weight)}${unitLabel()} \u00d7 ${st.reps}${st.rpe?' @ RPE '+st.rpe:''}</div>`;
           });
           html+=`</div>`;
         });
@@ -2355,6 +2379,7 @@ async function finishNameSetup(){
 function showProfileModal(){
   document.getElementById('profile-name-display').textContent=DB.userName||'User';
   document.getElementById('profile-email-display').textContent=DB.userEmail||'';
+  document.getElementById('profile-unit').value=getUnit();
   document.getElementById('profile-modal').classList.add('show');
 }
 
