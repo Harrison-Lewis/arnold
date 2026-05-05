@@ -516,7 +516,8 @@ h3{font-size:17px;font-weight:600;margin-bottom:8px;color:var(--text)}
 /* ============================================================
    EXERCISE DATABASE
    ============================================================ */
-function E(id,name,muscle,equip,inc){return{id,name,muscle,equip,inc}}
+// type: 'standard' (default) | 'bw' (bodyweight-variable: negative=assisted, positive=weighted) | 'cardio' (tracks km + min)
+function E(id,name,muscle,equip,inc,type){return{id,name,muscle,equip,inc,type:type||'standard'}}
 const EXERCISES=[
 // CHEST
 E('smith-incline-bench','Smith Machine Incline Bench Press','Chest','Machine',2.5),
@@ -535,7 +536,7 @@ E('high-cable-cross','High Cable Crossover','Chest','Cable',1),
 E('pec-deck','Pec Deck Machine','Chest','Machine',2.5),
 E('chest-press-machine','Chest Press Machine','Chest','Machine',2.5),
 E('push-up','Push Up','Chest','Bodyweight',0),
-E('dips','Dips','Chest','Bodyweight',0),
+E('dips','Dips','Chest','Bodyweight',2.5,'bw'),
 E('floor-press-bb','Floor Press Barbell','Chest','Barbell',2.5),
 E('landmine-press','Landmine Press','Chest','Barbell',2.5),
 E('svend-press','Svend Press','Chest','Dumbbell',1),
@@ -557,8 +558,8 @@ E('tbar-row','T-Bar Row','Back','Machine',2.5),
 E('straight-arm-pulldown','Straight Arm Pulldown','Back','Cable',2.5),
 E('reverse-fly-machine','Reverse Fly Machine','Back','Machine',2.5),
 E('face-pull','Face Pull','Back','Cable',1),
-E('pull-up','Pull Up','Back','Bodyweight',0),
-E('chin-up','Chin Up','Back','Bodyweight',0),
+E('pull-up','Pull Up','Back','Bodyweight',2.5,'bw'),
+E('chin-up','Chin Up','Back','Bodyweight',2.5,'bw'),
 E('incline-row-db','Incline Row Dumbbell','Back','Dumbbell',2),
 E('cable-row-single','Cable Row Single Arm','Back','Cable',2.5),
 E('rack-pull','Rack Pull','Back','Barbell',2.5),
@@ -611,7 +612,7 @@ E('skull-crusher-db','Skull Crusher Dumbbell','Triceps','Dumbbell',2),
 E('oh-tri-ext-db','Overhead Tricep Extension Dumbbell','Triceps','Dumbbell',2),
 E('oh-tri-ext-cable','Overhead Tricep Extension Cable','Triceps','Cable',2.5),
 E('tri-kickback-db','Tricep Kickback Dumbbell','Triceps','Dumbbell',1),
-E('tri-dips','Tricep Dips','Triceps','Bodyweight',0),
+E('tri-dips','Tricep Dips','Triceps','Bodyweight',2.5,'bw'),
 E('diamond-pushup','Diamond Push Up','Triceps','Bodyweight',0),
 E('french-press-ez','French Press EZ Bar','Triceps','Barbell',2.5),
 E('cable-oh-ext-single','Cable Overhead Extension Single Arm','Triceps','Cable',2.5),
@@ -708,21 +709,25 @@ E('knee-raise-captain','Knee Raise Captain Chair','Core','Bodyweight',0),
 E('landmine-rotation','Landmine Rotation','Core','Barbell',2.5),
 E('bird-dog','Bird Dog','Core','Bodyweight',0),
 
-// CARDIO
-E('treadmill','Treadmill','Cardio','Cardio',0),
-E('stationary-bike','Stationary Bike','Cardio','Cardio',0),
-E('rowing-machine','Rowing Machine','Cardio','Cardio',0),
-E('stairmaster','Stairmaster','Cardio','Cardio',0),
-E('jump-rope','Jump Rope','Cardio','Cardio',0),
-E('elliptical','Elliptical','Cardio','Cardio',0),
-E('battle-ropes','Battle Ropes','Cardio','Cardio',0),
-E('box-jump','Box Jump','Cardio','Cardio',0),
-E('burpee','Burpee','Cardio','Cardio',0),
-E('assault-bike','Assault Bike','Cardio','Cardio',0),
-E('ski-erg','Ski Erg','Cardio','Cardio',0),
-E('incline-walk','Incline Walk Treadmill','Cardio','Cardio',0),
-E('kettlebell-swing','Kettlebell Swing','Cardio','Dumbbell',2),
-E('sled-push','Sled Push','Cardio','Cardio',0),
+// CARDIO (weight field = distance km, reps field = duration min)
+E('treadmill','Treadmill','Cardio','Cardio',0,'cardio'),
+E('stationary-bike','Stationary Bike','Cardio','Cardio',0,'cardio'),
+E('rowing-machine','Rowing Machine','Cardio','Cardio',0,'cardio'),
+E('stairmaster','Stairmaster','Cardio','Cardio',0,'cardio'),
+E('jump-rope','Jump Rope','Cardio','Cardio',0,'cardio'),
+E('elliptical','Elliptical','Cardio','Cardio',0,'cardio'),
+E('battle-ropes','Battle Ropes','Cardio','Cardio',0,'cardio'),
+E('box-jump','Box Jump','Cardio','Cardio',0,'cardio'),
+E('burpee','Burpee','Cardio','Cardio',0,'cardio'),
+E('assault-bike','Assault Bike','Cardio','Cardio',0,'cardio'),
+E('ski-erg','Ski Erg','Cardio','Cardio',0,'cardio'),
+E('incline-walk','Incline Walk Treadmill','Cardio','Cardio',0,'cardio'),
+E('kettlebell-swing','Kettlebell Swing','Cardio','Dumbbell',2,'cardio'),
+E('sled-push','Sled Push','Cardio','Cardio',0,'cardio'),
+E('run-outdoor','Outdoor Run','Cardio','Cardio',0,'cardio'),
+E('cycle-outdoor','Outdoor Cycling','Cardio','Cardio',0,'cardio'),
+E('swim','Swimming','Cardio','Cardio',0,'cardio'),
+E('hike','Hiking','Cardio','Cardio',0,'cardio'),
 ];
 
 const EXERCISE_MAP={};EXERCISES.forEach(e=>EXERCISE_MAP[e.id]=e);
@@ -766,6 +771,13 @@ const PRESET_ROUTINES=[
   {exerciseId:'tri-ext-rope',sets:2,reps:'12-15',rpe:8},
   {exerciseId:'standing-cable-cross',sets:2,reps:'12-15',rpe:8},
   {exerciseId:'straight-arm-pulldown',sets:2,reps:'12-15',rpe:8},
+]},
+{id:'preset-abs',name:'Ab Workout',preset:true,exercises:[
+  {exerciseId:'dead-bug',sets:2,reps:'8/side',rpe:7},
+  {exerciseId:'hollow-body-hold',sets:2,reps:'20-30s',rpe:8},
+  {exerciseId:'pallof-press',sets:2,reps:'10/side',rpe:7},
+  {exerciseId:'ab-wheel',sets:2,reps:'8-10',rpe:8},
+  {exerciseId:'hanging-leg-raise',sets:2,reps:'10-12',rpe:8},
 ]},
 ];
 
@@ -827,7 +839,7 @@ async function saveSessions(s){
   const last=s[s.length-1];
   if(!last)return;
   const dur=last.endTime?Math.round((last.endTime-last.startTime)/60000):0;
-  const vol=last.exercises.reduce((t,ex)=>t+ex.sets.filter(st=>st.completed).reduce((sv,st)=>sv+st.weight*st.reps,0),0);
+  const vol=last.exercises.reduce((t,ex)=>{const ei=EXERCISE_MAP[ex.exerciseId];if(ei&&ei.type==='cardio')return t;return t+ex.sets.filter(st=>st.completed).reduce((sv,st)=>sv+(st.weight||0)*(st.reps||0),0)},0);
   const {error}=await supa.from('sessions').upsert({
     id:last.id,
     user_id:DB.userId,
@@ -966,6 +978,8 @@ function getLastPerformance(exId){
 function weightFromE1RM(e1rm,reps){return reps===1?e1rm:e1rm/(1+reps/30);}
 
 function getOverloadRec(exId,targetReps,targetRPE){
+  const ex0=EXERCISE_MAP[exId];
+  if(ex0&&ex0.type==='cardio')return null;
   const hist=getExerciseHistory(exId);
   if(hist.length===0)return{type:'first',text:'Log your first session to get recommendations'};
   const last=hist[hist.length-1];
@@ -1144,7 +1158,7 @@ function renderHome(){
     const d=new Date(lastSession.date);
     const dur=lastSession.endTime?Math.round((lastSession.endTime-lastSession.startTime)/60000):0;
     let vol=0;
-    lastSession.exercises.forEach(ex=>ex.sets.forEach(s=>{if(s.completed)vol+=s.weight*s.reps}));
+    lastSession.exercises.forEach(ex=>{const ei=EXERCISE_MAP[ex.exerciseId];if(ei&&ei.type==='cardio')return;ex.sets.forEach(s=>{if(s.completed)vol+=(s.weight||0)*(s.reps||0)})});
     html+=`<div class="card"><h3>Last Session</h3>`;
     html+=`<div class="text-sm text-muted">${d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</div>`;
     html+=`<div style="font-weight:600;margin:4px 0">${lastSession.routineName}</div>`;
@@ -1585,8 +1599,17 @@ function renderLog(){
 
     // Last performance
     if(ex.lastPerformance){
-      const best=ex.lastPerformance.sets.reduce((b,s)=>(s.weight>=b.weight)?s:b,ex.lastPerformance.sets[0]);
-      html+=`<div class="log-last">Last: ${displayW(best.weight)}${unitLabel()} \u00d7 ${best.reps} reps${best.rpe?' RPE '+best.rpe:''}</div>`;
+      if(exType==='cardio'){
+        const best=ex.lastPerformance.sets[0]||{};
+        html+=`<div class="log-last">Last: ${best.weight||0}km \u00d7 ${best.reps||0}min${best.rpe?' RPE '+best.rpe:''}</div>`;
+      } else if(exType==='bw'){
+        const best=ex.lastPerformance.sets.reduce((b,s)=>Math.abs(s.weight||0)>=Math.abs(b.weight||0)?s:b,ex.lastPerformance.sets[0]);
+        const wDisp=best.weight>0?`+${displayW(best.weight)}`:best.weight<0?`${displayW(best.weight)}`:'-';
+        html+=`<div class="log-last">Last: ${wDisp}${unitLabel()} \u00d7 ${best.reps} reps${best.rpe?' RPE '+best.rpe:''}</div>`;
+      } else {
+        const best=ex.lastPerformance.sets.reduce((b,s)=>(s.weight>=b.weight)?s:b,ex.lastPerformance.sets[0]);
+        html+=`<div class="log-last">Last: ${displayW(best.weight)}${unitLabel()} \u00d7 ${best.reps} reps${best.rpe?' RPE '+best.rpe:''}</div>`;
+      }
     }
 
     // Recommendation
@@ -1597,20 +1620,38 @@ function renderLog(){
     }
 
     // Set header
-    html+=`<div class="set-row" style="margin-bottom:4px"><div class="text-xs text-muted">#</div><div class="text-xs text-muted">${unitLabel()}</div><div class="text-xs text-muted">Reps</div><div class="text-xs text-muted">RPE</div><div></div></div>`;
+    const exType=exInfo?exInfo.type:'standard';
+    if(exType==='cardio'){
+      html+=`<div class="set-row" style="margin-bottom:4px"><div class="text-xs text-muted">#</div><div class="text-xs text-muted">km</div><div class="text-xs text-muted">min</div><div class="text-xs text-muted">RPE</div><div></div></div>`;
+    } else if(exType==='bw'){
+      html+=`<div class="set-row" style="margin-bottom:4px"><div class="text-xs text-muted">#</div><div class="text-xs text-muted">+/−${unitLabel()}</div><div class="text-xs text-muted">Reps</div><div class="text-xs text-muted">RPE</div><div></div></div>`;
+    } else {
+      html+=`<div class="set-row" style="margin-bottom:4px"><div class="text-xs text-muted">#</div><div class="text-xs text-muted">${unitLabel()}</div><div class="text-xs text-muted">Reps</div><div class="text-xs text-muted">RPE</div><div></div></div>`;
+    }
 
     // Sets
     const wStep=getUnit()==='lbs'?1:0.5;
     ex.sets.forEach((s,si)=>{
-      const dispW=s.weight?displayW(s.weight):'';
       html+=`<div class="set-row"><div class="set-label">${si+1}</div>`;
-      html+=`<input class="set-input" type="number" step="${wStep}" min="0" value="${dispW}" placeholder="0" onchange="updateSet(${ei},${si},'weight',storeW(+this.value))">`;
-      html+=`<input class="set-input" type="number" min="0" value="${s.reps||''}" placeholder="0" onchange="updateSet(${ei},${si},'reps',+this.value)">`;
+      if(exType==='cardio'){
+        // weight field = distance (km), reps field = duration (min) — no unit conversion
+        html+=`<input class="set-input" type="number" step="0.1" min="0" value="${s.weight||''}" placeholder="0" onchange="updateSet(${ei},${si},'weight',+this.value)">`;
+        html+=`<input class="set-input" type="number" min="0" value="${s.reps||''}" placeholder="0" onchange="updateSet(${ei},${si},'reps',+this.value)">`;
+      } else if(exType==='bw'){
+        // allow negative (assisted) and positive (weighted)
+        const dispW=s.weight?displayW(s.weight):'';
+        html+=`<input class="set-input" type="number" step="${wStep}" value="${dispW}" placeholder="0" onchange="updateSet(${ei},${si},'weight',storeW(+this.value))">`;
+        html+=`<input class="set-input" type="number" min="0" value="${s.reps||''}" placeholder="0" onchange="updateSet(${ei},${si},'reps',+this.value)">`;
+      } else {
+        const dispW=s.weight?displayW(s.weight):'';
+        html+=`<input class="set-input" type="number" step="${wStep}" min="0" value="${dispW}" placeholder="0" onchange="updateSet(${ei},${si},'weight',storeW(+this.value))">`;
+        html+=`<input class="set-input" type="number" min="0" value="${s.reps||''}" placeholder="0" onchange="updateSet(${ei},${si},'reps',+this.value)">`;
+      }
       html+=`<select class="rpe-select" onchange="updateSet(${ei},${si},'rpe',+this.value)">${[6,7,8,9,10].map(v=>`<option value="${v}"${v===s.rpe?' selected':''}>${v}</option>`).join('')}</select>`;
       html+=`<div class="set-check${s.completed?' done':''}" onclick="toggleSet(${ei},${si})"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div></div>`;
 
       // Regression warning: compare set N against set N last session only (not the peak set)
-      if(s.completed&&ex.lastPerformance){
+      if(s.completed&&ex.lastPerformance&&exType!=='cardio'){
         const prev=ex.lastPerformance.sets[si];
         if(prev&&(s.weight<prev.weight||s.reps<prev.reps)){
           html+=`<div class="text-xs text-warn" style="padding-left:40px;margin-top:-4px;margin-bottom:4px">Below last session's set ${si+1}</div>`;
@@ -1894,7 +1935,7 @@ function finishWorkout(){
   active.endTime=Date.now();
   const dur=Math.round((active.endTime-active.startTime)/60000);
   let totalVol=0;
-  active.exercises.forEach(ex=>ex.sets.forEach(s=>{if(s.completed)totalVol+=(s.weight||0)*(s.reps||0)}));
+  active.exercises.forEach(ex=>{const ei=EXERCISE_MAP[ex.exerciseId];if(ei&&ei.type==='cardio')return;ex.sets.forEach(s=>{if(s.completed)totalVol+=(s.weight||0)*(s.reps||0)})});
 
   // Check for personal records
   const prs=[];
@@ -2035,7 +2076,8 @@ function renderHistory(){
         s.exercises.forEach(ex=>{
           const completed=ex.sets.filter(st=>st.completed);
           if(completed.length>0)exCount++;
-          completed.forEach(st=>{vol+=(st.weight||0)*(st.reps||0)});
+          const exInf=EXERCISE_MAP[ex.exerciseId];
+          if(!exInf||exInf.type!=='cardio')completed.forEach(st=>{vol+=(st.weight||0)*(st.reps||0)});
         });
 
         html+=`<div class="card session-card" onclick="toggleSession(${sessions.length-1-idx})"><div class="flex justify-between items-center"><div><div style="font-weight:700">${s.routineName}</div><div class="date">${d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</div></div><div style="text-align:right"><div class="vol">${displayW(vol).toLocaleString()}${unitLabel()}</div><div class="text-xs text-muted">${dur}min \u2022 ${exCount} exercises</div></div></div>`;
