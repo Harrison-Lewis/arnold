@@ -1429,7 +1429,11 @@ function renderRoutineBuilder(el){
     builderExercises.forEach((be,i)=>{
       const ex=EXERCISE_MAP[be.exerciseId];
       html+=`<div class="builder-ex"><div class="builder-ex-info"><div class="builder-ex-name">${ex?ex.name:be.exerciseId}</div><div class="text-xs text-muted">${ex?ex.muscle:''}</div></div>`;
-      html+=`<div class="builder-inputs"><input type="number" value="${be.sets}" min="1" max="10" placeholder="Sets" onchange="builderExercises[${i}].sets=+this.value"><input type="text" value="${be.reps}" placeholder="Reps" style="width:70px" onchange="builderExercises[${i}].reps=this.value"><select onchange="builderExercises[${i}].rpe=+this.value">${[6,7,8,9,10].map(v=>`<option value="${v}"${v===be.rpe?' selected':''}>${v}</option>`).join('')}</select></div>`;
+      if(ex&&ex.type==='cardio'){
+        html+=`<div class="text-xs text-muted" style="margin-left:auto;padding-right:8px">Cardio</div>`;
+      } else {
+        html+=`<div class="builder-inputs"><input type="number" value="${be.sets}" min="1" max="10" placeholder="Sets" onchange="builderExercises[${i}].sets=+this.value"><input type="text" value="${be.reps}" placeholder="Reps" style="width:70px" onchange="builderExercises[${i}].reps=this.value"><select onchange="builderExercises[${i}].rpe=+this.value">${[6,7,8,9,10].map(v=>`<option value="${v}"${v===be.rpe?' selected':''}>${v}</option>`).join('')}</select></div>`;
+      }
       html+=`<div class="builder-remove" onclick="builderExercises.splice(${i},1);renderRoutines()">\u00d7</div></div>`;
     });
   }
@@ -1548,17 +1552,19 @@ function startRoutine(routineId){
     startTime:Date.now(),
     date:new Date().toISOString(),
     exercises:r.exercises.map(e=>{
-      const rec=getOverloadRec(e.exerciseId,e.reps,e.rpe);
+      const exInf=EXERCISE_MAP[e.exerciseId];
+      const isCardio=exInf&&exInf.type==='cardio';
+      const rec=isCardio?null:getOverloadRec(e.exerciseId,e.reps,e.rpe);
       const last=getLastPerformance(e.exerciseId);
       return{
         exerciseId:e.exerciseId,
-        exerciseName:(EXERCISE_MAP[e.exerciseId]||{}).name||e.exerciseId,
+        exerciseName:(exInf||{}).name||e.exerciseId,
         targetSets:e.sets,
         targetReps:e.reps,
         targetRPE:e.rpe,
         recommendation:rec,
         lastPerformance:last,
-        sets:Array.from({length:e.sets},()=>({weight:rec.weight||0,reps:rec.reps||0,rpe:e.rpe,completed:false}))
+        sets:isCardio?[{weight:0,reps:0,completed:false}]:Array.from({length:e.sets},()=>({weight:rec&&rec.weight||0,reps:rec&&rec.reps||0,rpe:e.rpe,completed:false}))
       };
     })
   };
@@ -1601,8 +1607,8 @@ function renderLog(){
     // Last performance
     if(ex.lastPerformance){
       if(exType==='cardio'){
-        const best=ex.lastPerformance.sets[0]||{};
-        html+=`<div class="log-last">Last: ${best.weight||0}km \u00d7 ${best.reps||0}min${best.rpe?' RPE '+best.rpe:''}</div>`;
+        const prev=ex.lastPerformance.sets[0]||{};
+        html+=`<div class="log-last">Last: ${prev.weight||0}km in ${prev.reps||0}min</div>`;
       } else if(exType==='bw'){
         const best=ex.lastPerformance.sets.reduce((b,s)=>Math.abs(s.weight||0)>=Math.abs(b.weight||0)?s:b,ex.lastPerformance.sets[0]);
         const wDisp=best.weight>0?`+${displayW(best.weight)}`:best.weight<0?`${displayW(best.weight)}`:'-';
@@ -1620,45 +1626,43 @@ function renderLog(){
       html+=`<div class="log-rec ${cls}">${rec.text}</div>`;
     }
 
-    // Set header
     if(exType==='cardio'){
-      html+=`<div class="set-row" style="margin-bottom:4px"><div class="text-xs text-muted">#</div><div class="text-xs text-muted">km</div><div class="text-xs text-muted">min</div><div class="text-xs text-muted">RPE</div><div></div></div>`;
-    } else if(exType==='bw'){
-      html+=`<div class="set-row" style="margin-bottom:4px"><div class="text-xs text-muted">#</div><div class="text-xs text-muted">+/−${unitLabel()}</div><div class="text-xs text-muted">Reps</div><div class="text-xs text-muted">RPE</div><div></div></div>`;
+      // Cardio: single flat entry — distance + duration, no sets
+      const s=ex.sets[0]||{weight:0,reps:0,completed:false};
+      const done=s.completed;
+      html+=`<div style="display:grid;grid-template-columns:1fr 1fr 52px;gap:8px;margin-top:8px">`;
+      html+=`<div><div class="text-xs text-muted" style="margin-bottom:4px">Distance (km)</div><input class="set-input" type="number" step="0.1" min="0" value="${s.weight||''}" placeholder="0" onchange="updateSet(${ei},0,'weight',+this.value)"></div>`;
+      html+=`<div><div class="text-xs text-muted" style="margin-bottom:4px">Duration (min)</div><input class="set-input" type="number" min="0" value="${s.reps||''}" placeholder="0" onchange="updateSet(${ei},0,'reps',+this.value)"></div>`;
+      html+=`<div style="display:flex;flex-direction:column;justify-content:flex-end"><div class="set-check${done?' done':''}" onclick="toggleCardio(${ei})"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div></div>`;
+      html+=`</div>`;
     } else {
-      html+=`<div class="set-row" style="margin-bottom:4px"><div class="text-xs text-muted">#</div><div class="text-xs text-muted">${unitLabel()}</div><div class="text-xs text-muted">Reps</div><div class="text-xs text-muted">RPE</div><div></div></div>`;
-    }
-
-    // Sets
-    const wStep=getUnit()==='lbs'?1:0.5;
-    ex.sets.forEach((s,si)=>{
-      html+=`<div class="set-row"><div class="set-label">${si+1}</div>`;
-      if(exType==='cardio'){
-        // weight field = distance (km), reps field = duration (min) — no unit conversion
-        html+=`<input class="set-input" type="number" step="0.1" min="0" value="${s.weight||''}" placeholder="0" onchange="updateSet(${ei},${si},'weight',+this.value)">`;
-        html+=`<input class="set-input" type="number" min="0" value="${s.reps||''}" placeholder="0" onchange="updateSet(${ei},${si},'reps',+this.value)">`;
-      } else if(exType==='bw'){
-        // allow negative (assisted) and positive (weighted)
-        const dispW=s.weight?displayW(s.weight):'';
-        html+=`<input class="set-input" type="number" step="${wStep}" value="${dispW}" placeholder="0" onchange="updateSet(${ei},${si},'weight',storeW(+this.value))">`;
-        html+=`<input class="set-input" type="number" min="0" value="${s.reps||''}" placeholder="0" onchange="updateSet(${ei},${si},'reps',+this.value)">`;
+      // Standard / bw: set rows
+      const wStep=getUnit()==='lbs'?1:0.5;
+      if(exType==='bw'){
+        html+=`<div class="set-row" style="margin-bottom:4px"><div class="text-xs text-muted">#</div><div class="text-xs text-muted">+/−${unitLabel()}</div><div class="text-xs text-muted">Reps</div><div class="text-xs text-muted">RPE</div><div></div></div>`;
       } else {
+        html+=`<div class="set-row" style="margin-bottom:4px"><div class="text-xs text-muted">#</div><div class="text-xs text-muted">${unitLabel()}</div><div class="text-xs text-muted">Reps</div><div class="text-xs text-muted">RPE</div><div></div></div>`;
+      }
+      ex.sets.forEach((s,si)=>{
         const dispW=s.weight?displayW(s.weight):'';
-        html+=`<input class="set-input" type="number" step="${wStep}" min="0" value="${dispW}" placeholder="0" onchange="updateSet(${ei},${si},'weight',storeW(+this.value))">`;
-        html+=`<input class="set-input" type="number" min="0" value="${s.reps||''}" placeholder="0" onchange="updateSet(${ei},${si},'reps',+this.value)">`;
-      }
-      html+=`<select class="rpe-select" onchange="updateSet(${ei},${si},'rpe',+this.value)">${[6,7,8,9,10].map(v=>`<option value="${v}"${v===s.rpe?' selected':''}>${v}</option>`).join('')}</select>`;
-      html+=`<div class="set-check${s.completed?' done':''}" onclick="toggleSet(${ei},${si})"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div></div>`;
-
-      // Regression warning: compare set N against set N last session only (not the peak set)
-      if(s.completed&&ex.lastPerformance&&exType!=='cardio'){
-        const prev=ex.lastPerformance.sets[si];
-        if(prev&&(s.weight<prev.weight||s.reps<prev.reps)){
-          html+=`<div class="text-xs text-warn" style="padding-left:40px;margin-top:-4px;margin-bottom:4px">Below last session's set ${si+1}</div>`;
+        html+=`<div class="set-row"><div class="set-label">${si+1}</div>`;
+        if(exType==='bw'){
+          html+=`<input class="set-input" type="number" step="${wStep}" value="${dispW}" placeholder="0" onchange="updateSet(${ei},${si},'weight',storeW(+this.value))">`;
+        } else {
+          html+=`<input class="set-input" type="number" step="${wStep}" min="0" value="${dispW}" placeholder="0" onchange="updateSet(${ei},${si},'weight',storeW(+this.value))">`;
         }
-      }
-    });
-    html+=`<div class="log-sets-controls"><button class="btn btn-sm btn-secondary" onclick="addSetToEx(${ei})">+ Set</button><button class="btn btn-sm btn-secondary" onclick="removeSetFromEx(${ei})"${ex.sets.length<=1?' style="opacity:.4"':''}>&#8722; Set</button></div>`;
+        html+=`<input class="set-input" type="number" min="0" value="${s.reps||''}" placeholder="0" onchange="updateSet(${ei},${si},'reps',+this.value)">`;
+        html+=`<select class="rpe-select" onchange="updateSet(${ei},${si},'rpe',+this.value)">${[6,7,8,9,10].map(v=>`<option value="${v}"${v===s.rpe?' selected':''}>${v}</option>`).join('')}</select>`;
+        html+=`<div class="set-check${s.completed?' done':''}" onclick="toggleSet(${ei},${si})"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div></div>`;
+        if(s.completed&&ex.lastPerformance){
+          const prev=ex.lastPerformance.sets[si];
+          if(prev&&(s.weight<prev.weight||s.reps<prev.reps)){
+            html+=`<div class="text-xs text-warn" style="padding-left:40px;margin-top:-4px;margin-bottom:4px">Below last session's set ${si+1}</div>`;
+          }
+        }
+      });
+      html+=`<div class="log-sets-controls"><button class="btn btn-sm btn-secondary" onclick="addSetToEx(${ei})">+ Set</button><button class="btn btn-sm btn-secondary" onclick="removeSetFromEx(${ei})"${ex.sets.length<=1?' style="opacity:.4"':''}>&#8722; Set</button></div>`;
+    }
     html+=`</div>`;
   });
 
@@ -1684,6 +1688,15 @@ function toggleSet(ei,si){
   saveActive(active);
   renderLog();
   if(s.completed)startRestTimer();
+}
+
+function toggleCardio(ei){
+  const active=getActive();
+  if(!active)return;
+  const s=active.exercises[ei].sets[0];
+  s.completed=!s.completed;
+  saveActive(active);
+  renderLog();
 }
 
 /* REST TIMER */
@@ -1815,13 +1828,15 @@ function swapActiveEx(idx,newExId){
 
 function addActiveEx(exId){
   const active=getActive();if(!active)return;
-  const rec=getOverloadRec(exId,'8-10',8);
+  const exInf=EXERCISE_MAP[exId];
+  const isCardio=exInf&&exInf.type==='cardio';
+  const rec=isCardio?null:getOverloadRec(exId,'8-10',8);
   const last=getLastPerformance(exId);
   active.exercises.push({
-    exerciseId:exId,exerciseName:(EXERCISE_MAP[exId]||{}).name||exId,
-    targetSets:3,targetReps:'8-10',targetRPE:8,
+    exerciseId:exId,exerciseName:(exInf||{}).name||exId,
+    targetSets:isCardio?1:3,targetReps:isCardio?'-':'8-10',targetRPE:isCardio?'-':8,
     recommendation:rec,lastPerformance:last,
-    sets:Array.from({length:3},()=>({weight:rec.weight||0,reps:rec.reps||0,rpe:8,completed:false}))
+    sets:isCardio?[{weight:0,reps:0,completed:false}]:Array.from({length:3},()=>({weight:rec&&rec.weight||0,reps:rec&&rec.reps||0,rpe:8,completed:false}))
   });
   saveActive(active);renderLog();
 }
