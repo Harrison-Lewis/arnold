@@ -1595,6 +1595,7 @@ function renderLog(){
 
   active.exercises.forEach((ex,ei)=>{
     const exInfo=EXERCISE_MAP[ex.exerciseId];
+    const exType=exInfo?exInfo.type:'standard';
     html+=`<div class="log-exercise"><div class="log-exercise-header"><div onclick="showExPopup('${ex.exerciseId}')" style="flex:1;cursor:pointer"><div class="log-exercise-name">${ex.exerciseName}</div><div class="log-exercise-target">${ex.targetSets} sets \u00d7 ${ex.targetReps} reps @ RPE ${ex.targetRPE}</div></div><div class="flex gap-8 items-center"><button class="log-ex-action" onclick="openMidWorkoutPicker('swap',${ei})" title="Swap exercise"><svg viewBox="0 0 24 24"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg></button><button class="log-ex-action danger" onclick="removeMidWorkoutEx(${ei})" title="Remove exercise"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button></div></div>`;
 
     // Last performance
@@ -1620,7 +1621,6 @@ function renderLog(){
     }
 
     // Set header
-    const exType=exInfo?exInfo.type:'standard';
     if(exType==='cardio'){
       html+=`<div class="set-row" style="margin-bottom:4px"><div class="text-xs text-muted">#</div><div class="text-xs text-muted">km</div><div class="text-xs text-muted">min</div><div class="text-xs text-muted">RPE</div><div></div></div>`;
     } else if(exType==='bw'){
@@ -2449,8 +2449,8 @@ async function init(){
     return;
   }
   if(session){
-    await loadUserData(session.user);
-    if(!DB.userName){
+    const loaded=await loadUserData(session.user);
+    if(loaded&&!DB.userName){
       document.getElementById('welcome').classList.add('hide');
       document.getElementById('name-setup').classList.add('show');
     }else{
@@ -2494,8 +2494,8 @@ document.addEventListener('visibilitychange',()=>{
 // Listen for auth state changes (handles OAuth redirect callback)
 supa.auth.onAuthStateChange(async(event,session)=>{
   if(event==='SIGNED_IN'&&session&&!DB.userId){
-    await loadUserData(session.user);
-    if(!DB.userName){
+    const loaded=await loadUserData(session.user);
+    if(loaded&&!DB.userName){
       document.getElementById('welcome').classList.add('hide');
       document.getElementById('name-setup').classList.add('show');
     }else{
