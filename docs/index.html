@@ -989,7 +989,7 @@ function getOverloadRec(exId,targetReps,targetRPE){
   const ex=EXERCISE_MAP[exId];
   const inc=ex?ex.inc:2.5;
   const repRange=targetReps||last.targetReps||'8-10';
-  const parts=repRange.split('-').map(Number);
+  const parts=repRange.split('-').map(Number).filter(n=>!isNaN(n)&&n>0);
   const minReps=parts[0]||8;
   const maxReps=parts[1]||parts[0]||10;
   const midReps=Math.round((minReps+maxReps)/2);
@@ -1120,6 +1120,8 @@ function renderHome(){
   if(lastSession){
     let hasRegression=false;
     lastSession.exercises.forEach(ex=>{
+      const exInf=EXERCISE_MAP[ex.exerciseId];
+      if(exInf&&exInf.type==='cardio')return; // skip cardio
       const hist=getExerciseHistory(ex.exerciseId);
       if(hist.length>=2){
         const prev=hist[hist.length-2];
@@ -1261,7 +1263,9 @@ function renderExerciseDetail(el){
   }
 
   // Overload recommendation
-  html+=`<div class="card card-glow"><h3>Next Session</h3><div class="text-sm ${rec.type==='deload'?'text-danger':rec.type==='hold'?'text-warn':'text-accent'}" style="font-weight:600">${rec.text}</div></div>`;
+  if(rec){
+    html+=`<div class="card card-glow"><h3>Next Session</h3><div class="text-sm ${rec.type==='deload'?'text-danger':rec.type==='hold'?'text-warn':'text-accent'}" style="font-weight:600">${rec.text}</div></div>`;
+  }
 
   // 1RM chart
   if(hist.length>=2){
@@ -1294,7 +1298,7 @@ function renderExerciseDetail(el){
         const best=h.sets.reduce((b,s)=>calcE1RM(s.weight,s.reps)>calcE1RM(b.weight,b.reps)?s:b,h.sets[0]);
         return+calcE1RM(best.weight,best.reps).toFixed(1);
       });
-      new Chart(ctx,{type:'line',data:{labels,datasets:[{data,borderColor:'#007AFF',backgroundColor:'rgba(0,122,255,.07)',fill:true,tension:.3,pointRadius:4,pointBackgroundColor:'#007AFF'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'rgba(60,60,67,.45)',font:{size:10}},grid:{color:'rgba(60,60,67,.08)'}},y:{ticks:{color:'rgba(60,60,67,.45)',font:{size:10},callback:v=>v+'kg'},grid:{color:'rgba(60,60,67,.08)'}}}}});
+      new Chart(ctx,{type:'line',data:{labels,datasets:[{data,borderColor:'#007AFF',backgroundColor:'rgba(0,122,255,.07)',fill:true,tension:.3,pointRadius:4,pointBackgroundColor:'#007AFF'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'rgba(60,60,67,.45)',font:{size:10}},grid:{color:'rgba(60,60,67,.08)'}},y:{ticks:{color:'rgba(60,60,67,.45)',font:{size:10},callback:v=>displayW(v)+unitLabel()},grid:{color:'rgba(60,60,67,.08)'}}}}});
     }
   }
 }
@@ -1814,14 +1818,18 @@ function selectMidWorkoutEx(exId){
 function swapActiveEx(idx,newExId){
   const active=getActive();if(!active)return;
   const old=active.exercises[idx];
-  const rec=getOverloadRec(newExId,old.targetReps,old.targetRPE);
+  const newInf=EXERCISE_MAP[newExId];
+  const isCardio=newInf&&newInf.type==='cardio';
+  const rec=isCardio?null:getOverloadRec(newExId,old.targetReps,old.targetRPE);
   const last=getLastPerformance(newExId);
   active.exercises[idx]={
     exerciseId:newExId,
-    exerciseName:(EXERCISE_MAP[newExId]||{}).name||newExId,
-    targetSets:old.targetSets,targetReps:old.targetReps,targetRPE:old.targetRPE,
+    exerciseName:(newInf||{}).name||newExId,
+    targetSets:isCardio?1:old.targetSets,
+    targetReps:isCardio?'-':old.targetReps,
+    targetRPE:isCardio?'-':old.targetRPE,
     recommendation:rec,lastPerformance:last,
-    sets:Array.from({length:old.targetSets},()=>({weight:rec.weight||0,reps:rec.reps||0,rpe:old.targetRPE,completed:false}))
+    sets:isCardio?[{weight:0,reps:0,completed:false}]:Array.from({length:old.targetSets},()=>({weight:rec&&rec.weight||0,reps:rec&&rec.reps||0,rpe:old.targetRPE,completed:false}))
   };
   saveActive(active);renderLog();
 }
@@ -1906,7 +1914,7 @@ function showExPopup(exId){
     const recent=hist.slice(-5).reverse();
     recent.forEach(h=>{
       html+=`<div style="padding:8px 0;border-bottom:0.5px solid rgba(60,60,67,0.12)"><div class="text-sm text-muted">${new Date(h.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</div>`;
-      h.sets.forEach((s,i)=>{html+=`<div class="text-sm">Set ${i+1}: ${s.weight}kg \u00d7 ${s.reps}${s.rpe?' @ RPE '+s.rpe:''}</div>`});
+      h.sets.forEach((s,i)=>{html+=`<div class="text-sm">Set ${i+1}: ${displayW(s.weight)}${unitLabel()} \u00d7 ${s.reps}${s.rpe?' @ RPE '+s.rpe:''}</div>`});
       html+=`</div>`;
     });
 
@@ -1984,7 +1992,7 @@ function showSummary(active,dur,totalVol,prs){
   html+=`<div class="summary-stats"><div class="summary-stat"><div class="val">${displayW(totalVol).toLocaleString()}<span style="font-size:14px">${unitLabel()}</span></div><div class="label">Volume</div></div>`;
 
   let completedCount=0;
-  active.exercises.forEach(ex=>ex.sets.forEach(s=>{if(s.completed)completedCount++}));
+  active.exercises.forEach(ex=>{const ei=EXERCISE_MAP[ex.exerciseId];if(ei&&ei.type==='cardio')return;ex.sets.forEach(s=>{if(s.completed)completedCount++})});
   html+=`<div class="summary-stat"><div class="val">${completedCount}</div><div class="label">Sets</div></div>`;
   html+=`<div class="summary-stat"><div class="val">${active.exercises.length}</div><div class="label">Exercises</div></div></div></div>`;
 
@@ -2287,7 +2295,7 @@ function renderDashboard(sessions){
   // Stats
   let totalSessions=sessions.length;
   let totalVol=0;
-  sessions.forEach(s=>s.exercises.forEach(ex=>ex.sets.forEach(st=>{if(st.completed)totalVol+=(st.weight||0)*(st.reps||0)})));
+  sessions.forEach(s=>s.exercises.forEach(ex=>{const ei=EXERCISE_MAP[ex.exerciseId];if(ei&&ei.type==='cardio')return;ex.sets.forEach(st=>{if(st.completed)totalVol+=(st.weight||0)*(st.reps||0)})}));
   const totalTonnes=(totalVol/1000).toFixed(1);
 
   // Streak calc
@@ -2327,7 +2335,7 @@ function renderDashboard(sessions){
   if(topLifts.length>0){
     html+=`<div class="card"><h3>Top Lifts (Est. 1RM)</h3>`;
     topLifts.forEach(l=>{
-      html+=`<div class="flex justify-between items-center" style="padding:8px 0;border-bottom:0.5px solid rgba(60,60,67,0.12)"><div class="text-sm" style="font-weight:600">${l.name}</div><div class="text-accent" style="font-weight:700">${l.e1rm.toFixed(1)}kg</div></div>`;
+      html+=`<div class="flex justify-between items-center" style="padding:8px 0;border-bottom:0.5px solid rgba(60,60,67,0.12)"><div class="text-sm" style="font-weight:600">${l.name}</div><div class="text-accent" style="font-weight:700">${displayW(+l.e1rm.toFixed(1))}${unitLabel()}</div></div>`;
     });
     html+=`</div>`;
   }
@@ -2459,11 +2467,11 @@ async function init(){
     const res=await withTimeout(supa.auth.getSession(),10000);
     session=res.data?.session||null;
   }catch(e){
-    // getSession timed out or failed — show auth so user can sign in
     showAuth();
     return;
   }
   if(session){
+    _authHandled=true; // prevent onAuthStateChange from double-loading
     const loaded=await loadUserData(session.user);
     if(loaded&&!DB.userName){
       document.getElementById('welcome').classList.add('hide');
@@ -2507,8 +2515,12 @@ document.addEventListener('visibilitychange',()=>{
 });
 
 // Listen for auth state changes (handles OAuth redirect callback)
+// Guard with a flag so init() and onAuthStateChange don't both load data
+let _authHandled=false;
 supa.auth.onAuthStateChange(async(event,session)=>{
-  if(event==='SIGNED_IN'&&session&&!DB.userId){
+  if(event==='SIGNED_IN'&&session){
+    if(_authHandled)return; // init() already handled it
+    _authHandled=true;
     const loaded=await loadUserData(session.user);
     if(loaded&&!DB.userName){
       document.getElementById('welcome').classList.add('hide');
@@ -2517,6 +2529,7 @@ supa.auth.onAuthStateChange(async(event,session)=>{
       showApp();
     }
   }
+  if(event==='SIGNED_OUT'){_authHandled=false;}
 });
 
 init();
