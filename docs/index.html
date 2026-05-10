@@ -580,6 +580,7 @@ E('block-pull','Block Pull','Back','Barbell',2.5),
 E('shoulder-press-machine','Shoulder Press Machine','Shoulders','Machine',2.5),
 E('bb-ohp','Barbell Overhead Press','Shoulders','Barbell',2.5),
 E('db-shoulder-press','Dumbbell Shoulder Press','Shoulders','Dumbbell',2),
+E('db-thruster','DB Thruster','Shoulders','Dumbbell',2),
 E('arnold-press','Arnold Press','Shoulders','Dumbbell',2),
 E('lat-raise-db','Lateral Raise Dumbbell','Shoulders','Dumbbell',1),
 E('lat-raise-cable-l','Lateral Raise Cable L','Shoulders','Cable',1),
@@ -782,6 +783,75 @@ const PRESET_ROUTINES=[
 ];
 
 /* ============================================================
+   HYROX PRESET ROUTINES
+   ============================================================ */
+const HYROX_ROUTINES=[
+{id:'hyrox-p1-lower',name:'Phase 1 — Lower Body',preset:true,exercises:[
+  {exerciseId:'hack-squat',sets:4,reps:'6-8',rpe:8},
+  {exerciseId:'rdl-bb',sets:3,reps:'8-10',rpe:8},
+  {exerciseId:'bulgarian-split-squat',sets:3,reps:'10/side',rpe:8},
+  {exerciseId:'leg-press',sets:3,reps:'12',rpe:8},
+  {exerciseId:'calf-raise-standing',sets:4,reps:'15',rpe:7},
+]},
+{id:'hyrox-p1-upper-push',name:'Phase 1 — Upper Push',preset:true,exercises:[
+  {exerciseId:'incline-bb-bench',sets:4,reps:'6-8',rpe:8},
+  {exerciseId:'db-shoulder-press',sets:3,reps:'10',rpe:8},
+  {exerciseId:'lat-raise-cable-l',sets:4,reps:'15',rpe:7},
+  {exerciseId:'lat-raise-cable-r',sets:4,reps:'15',rpe:7},
+  {exerciseId:'tri-pulldown-rope',sets:3,reps:'12',rpe:8},
+  {exerciseId:'tri-ext-rope',sets:3,reps:'12',rpe:8},
+]},
+{id:'hyrox-p1-upper-pull',name:'Phase 1 — Upper Pull',preset:true,exercises:[
+  {exerciseId:'pull-up',sets:4,reps:'5-8',rpe:8},
+  {exerciseId:'incline-row-db',sets:4,reps:'8-10',rpe:8},
+  {exerciseId:'seated-row',sets:3,reps:'10-12',rpe:8},
+  {exerciseId:'face-pull',sets:3,reps:'15',rpe:7},
+  {exerciseId:'bb-curl',sets:3,reps:'10',rpe:8},
+  {exerciseId:'hammer-curl-db',sets:3,reps:'12',rpe:8},
+]},
+{id:'hyrox-p2-lower',name:'Phase 2 — Lower Body',preset:true,exercises:[
+  {exerciseId:'hack-squat',sets:4,reps:'5',rpe:8},
+  {exerciseId:'rdl-bb',sets:3,reps:'8',rpe:8},
+  {exerciseId:'walking-lunges-db',sets:3,reps:'12/side',rpe:8},
+  {exerciseId:'farmer-walk',sets:4,reps:'30',rpe:8},
+  {exerciseId:'calf-raise-standing',sets:4,reps:'15',rpe:7},
+]},
+{id:'hyrox-p2-upper',name:'Phase 2 — Upper Push + Pull',preset:true,exercises:[
+  {exerciseId:'incline-bb-bench',sets:3,reps:'8',rpe:8},
+  {exerciseId:'pull-up',sets:3,reps:'6-8',rpe:8},
+  {exerciseId:'db-shoulder-press',sets:3,reps:'10',rpe:8},
+  {exerciseId:'incline-row-db',sets:3,reps:'10',rpe:8},
+  {exerciseId:'lat-raise-cable-l',sets:3,reps:'15',rpe:7},
+  {exerciseId:'lat-raise-cable-r',sets:3,reps:'15',rpe:7},
+  {exerciseId:'bb-curl',sets:3,reps:'12',rpe:8},
+  {exerciseId:'tri-pulldown-rope',sets:3,reps:'12',rpe:8},
+]},
+{id:'hyrox-p3-lower',name:'Phase 3 — Lower Body (Taper)',preset:true,exercises:[
+  {exerciseId:'hack-squat',sets:3,reps:'5',rpe:8},
+  {exerciseId:'rdl-bb',sets:3,reps:'8',rpe:8},
+  {exerciseId:'walking-lunges-db',sets:2,reps:'10/side',rpe:8},
+  {exerciseId:'farmer-walk',sets:3,reps:'20',rpe:8},
+]},
+{id:'hyrox-p3-upper',name:'Phase 3 — Upper (Taper)',preset:true,exercises:[
+  {exerciseId:'incline-bb-bench',sets:3,reps:'8',rpe:8},
+  {exerciseId:'pull-up',sets:3,reps:'6',rpe:8},
+  {exerciseId:'lat-raise-cable-l',sets:3,reps:'15',rpe:7},
+  {exerciseId:'lat-raise-cable-r',sets:3,reps:'15',rpe:7},
+  {exerciseId:'face-pull',sets:3,reps:'15',rpe:7},
+]},
+{id:'hyrox-simulation',name:'Hyrox Simulation',preset:true,exercises:[
+  {exerciseId:'run-outdoor',sets:1,reps:'-',rpe:'-'},
+  {exerciseId:'farmer-walk',sets:2,reps:'30',rpe:8},
+  {exerciseId:'run-outdoor',sets:1,reps:'-',rpe:'-'},
+  {exerciseId:'rowing-machine',sets:1,reps:'-',rpe:'-'},
+  {exerciseId:'run-outdoor',sets:1,reps:'-',rpe:'-'},
+  {exerciseId:'db-thruster',sets:1,reps:'20',rpe:8},
+  {exerciseId:'run-outdoor',sets:1,reps:'-',rpe:'-'},
+  {exerciseId:'burpee',sets:1,reps:'-',rpe:'-'},
+]},
+];
+
+/* ============================================================
    SUPABASE CLIENT
    ============================================================ */
 const SUPA_URL='https://suzavcotbneyhqzygrym.supabase.co';
@@ -953,7 +1023,8 @@ function getAllRoutines(){
   const custom=getRoutines();
   // Custom routines with the same ID as a preset override that preset (edited presets)
   const customIds=new Set(custom.map(r=>r.id));
-  return[...custom,...PRESET_ROUTINES.filter(r=>!customIds.has(r.id))];
+  const allPresets=[...PRESET_ROUTINES,...HYROX_ROUTINES].filter(r=>!customIds.has(r.id));
+  return[...custom,...allPresets];
 }
 
 /* ============================================================
@@ -1335,24 +1406,28 @@ function renderRoutines(){
   if(routineBuilderActive)return renderRoutineBuilder(el);
 
   const custom=getRoutines();
+  const customIds=new Set(custom.map(r=>r.id));
+  const sectionLabel=(label,mt=false)=>`<h3 class="text-muted mb-8${mt?' mt-24':''}" style="font-size:13px;text-transform:uppercase;letter-spacing:1px">${label}</h3>`;
+  const routineCard=(r,locked)=>{
+    const exList=r.exercises.slice(0,3).map(e=>(EXERCISE_MAP[e.exerciseId]||{}).name||'').join(' \u2022 ')+(r.exercises.length>3?' \u2022 ':'');
+    return`<div class="card routine-card" onclick="showRoutineDetail('${r.id}')"><div class="flex justify-between items-center"><h3>${r.name}${locked?`<span class="lock-badge">\u{1f512}</span>`:''}</h3><span class="badge">${r.exercises.length} exercises</span></div><div class="ex-list">${exList}</div></div>`;
+  };
   let html=`<h2>Routines</h2>`;
 
-  // Preset
-  html+=`<h3 class="text-muted mb-8" style="font-size:13px;text-transform:uppercase;letter-spacing:1px">Preset Routines</h3>`;
-  PRESET_ROUTINES.forEach(r=>{
-    html+=`<div class="card routine-card" onclick="showRoutineDetail('${r.id}')"><div class="flex justify-between items-center"><h3>${r.name}<span class="lock-badge">\u{1f512}</span></h3><span class="badge">${r.exercises.length} exercises</span></div>`;
-    html+=`<div class="ex-list">${r.exercises.slice(0,3).map(e=>(EXERCISE_MAP[e.exerciseId]||{}).name||'').join(' \u2022 ')}${r.exercises.length>3?' \u2022 ...':''}</div></div>`;
-  });
+  // Bodybuilding presets
+  html+=sectionLabel('Bodybuilding');
+  PRESET_ROUTINES.filter(r=>!customIds.has(r.id)).forEach(r=>{html+=routineCard(r,true)});
 
-  // Custom
-  html+=`<h3 class="text-muted mb-8 mt-24" style="font-size:13px;text-transform:uppercase;letter-spacing:1px">My Routines</h3>`;
+  // Hyrox presets
+  html+=sectionLabel('Hyrox',true);
+  HYROX_ROUTINES.filter(r=>!customIds.has(r.id)).forEach(r=>{html+=routineCard(r,true)});
+
+  // Custom routines
+  html+=sectionLabel('Created by You',true);
   if(custom.length===0){
     html+=`<div class="card empty-state"><p>No custom routines yet</p></div>`;
   }else{
-    custom.forEach(r=>{
-      html+=`<div class="card routine-card" onclick="showRoutineDetail('${r.id}')"><div class="flex justify-between items-center"><h3>${r.name}</h3><span class="badge">${r.exercises.length} exercises</span></div>`;
-      html+=`<div class="ex-list">${r.exercises.slice(0,3).map(e=>(EXERCISE_MAP[e.exerciseId]||{}).name||'').join(' \u2022 ')}${r.exercises.length>3?' \u2022 ...':''}</div></div>`;
-    });
+    custom.forEach(r=>{html+=routineCard(r,false)});
   }
 
   html+=`<button class="btn btn-primary btn-block mt-16" onclick="startBuilder()">Create Routine</button>`;
