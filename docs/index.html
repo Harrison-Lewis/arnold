@@ -835,6 +835,8 @@ function unitLabel(){return getUnit()}
 // --- Async writes: update cache immediately, then persist to Supabase ---
 async function saveSessions(s){
   DB.sessions=s;
+  // Always back up to localStorage so history survives Supabase failures
+  if(DB.userId)LS.set('wc_sess_'+DB.userId,s);
   if(!DB.userId)return;
   const last=s[s.length-1];
   if(!last)return;
@@ -913,6 +915,23 @@ async function loadUserData(user){
       endTime:new Date(s.created_at).getTime()+s.duration_minutes*60000,
       exercises:s.exercises,
     }));
+    // Recover any locally-cached sessions that failed to sync to Supabase
+    const localSess=LS.get('wc_sess_'+user.id,[]);
+    if(localSess.length){
+      const supaIds=new Set((sessRes.data||[]).map(s=>s.id));
+      const unsynced=localSess.filter(s=>s.id&&!supaIds.has(s.id));
+      if(unsynced.length){
+        DB.sessions=[...DB.sessions,...unsynced].sort((a,b)=>new Date(a.date)-new Date(b.date));
+        // Re-upload missing sessions to Supabase in the background
+        unsynced.forEach(sess=>{
+          const dur=sess.endTime?Math.round((sess.endTime-sess.startTime)/60000):0;
+          const vol=sess.exercises.reduce((t,ex)=>{const ei=EXERCISE_MAP[ex.exerciseId];if(ei&&ei.type==='cardio')return t;return t+ex.sets.filter(st=>st.completed).reduce((sv,st)=>sv+(st.weight||0)*(st.reps||0),0)},0);
+          supa.from('sessions').upsert({id:sess.id,user_id:user.id,routine_name:sess.routineName||'',date:sess.date.split('T')[0],duration_minutes:dur,total_volume:vol,exercises:sess.exercises}).catch(()=>{});
+        });
+      }
+    }
+    // Keep localStorage in sync with the authoritative Supabase data
+    LS.set('wc_sess_'+user.id,DB.sessions);
     DB.routines=(routRes.data||[]).map(r=>({id:r.id,name:r.name,exercises:r.exercises,preset:r.is_preset}));
     DB.customExercises=(exRes.data||[]).map(e=>({
       id:e.id,name:e.name,muscle:e.muscle_group,equip:e.equipment,inc:e.increment,custom:true
@@ -920,6 +939,9 @@ async function loadUserData(user){
     rebuildExerciseMap();
     profileLoaded=true;
   }catch(e){
+    // Supabase failed — fall back to localStorage so history isn't lost
+    const localSess=LS.get('wc_sess_'+DB.userId,[]);
+    if(localSess.length)DB.sessions=localSess;
     rebuildExerciseMap();
   }finally{
     showLoading(false);
