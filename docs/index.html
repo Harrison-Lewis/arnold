@@ -1135,8 +1135,8 @@ function getOverloadRec(exId,targetReps,targetRPE){
 function checkRegression(exId,currentW,currentR){
   const last=getLastPerformance(exId);
   if(!last)return false;
-  const bestSet=last.sets.reduce((b,s)=>(s.weight>b.weight||(s.weight===b.weight&&s.reps>b.reps))?s:b,last.sets[0]);
-  return currentW<bestSet.weight||currentR<bestSet.reps;
+  const bestE1RM=last.sets.reduce((b,s)=>Math.max(b,calcE1RM(s.weight,s.reps)),0);
+  return calcE1RM(currentW,currentR)<bestE1RM;
 }
 
 /* ============================================================
@@ -1757,8 +1757,8 @@ function renderLog(){
         html+=`<div class="set-check${s.completed?' done':''}" onclick="toggleSet(${ei},${si})"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div></div>`;
         if(s.completed&&ex.lastPerformance){
           const prev=ex.lastPerformance.sets[si];
-          if(prev&&(s.weight<prev.weight||s.reps<prev.reps)){
-            html+=`<div class="text-xs text-warn" style="padding-left:40px;margin-top:-4px;margin-bottom:4px">Below last session's set ${si+1}</div>`;
+          if(prev&&calcE1RM(s.weight,s.reps)<calcE1RM(prev.weight,prev.reps)){
+            html+=`<div class="text-xs text-warn" style="padding-left:40px;margin-top:-4px;margin-bottom:4px">Below last session's set ${si+1} (est. 1RM)</div>`;
           }
         }
       });
