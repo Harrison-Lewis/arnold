@@ -192,8 +192,8 @@ h3{font-size:17px;font-weight:600;margin-bottom:8px;color:var(--text)}
 /* MID-WORKOUT PICKER MODAL */
 #mid-workout-picker{position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.4);display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 #mid-workout-picker.show{display:flex}
-#mid-workout-picker .picker-sheet{background:var(--card);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px 16px calc(24px + var(--safe-b));max-height:78vh;display:flex;flex-direction:column}
-#mid-picker-results{overflow-y:auto;flex:1;margin-top:10px}
+#mid-workout-picker .picker-sheet{background:var(--card);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px 16px 16px;max-height:60vh;display:flex;flex-direction:column;transition:transform 0.2s ease}
+#mid-picker-results{overflow-y:auto;flex:1;margin-top:10px;-webkit-overflow-scrolling:touch}
 /* BODY MAP */
 .body-map-wrap{display:flex;gap:10px;align-items:flex-start;margin-bottom:4px}
 .body-map-svgs{display:flex;gap:6px;flex-shrink:0}
@@ -1892,6 +1892,16 @@ function restoreTimer(){
 /* MID-WORKOUT EXERCISE MANAGEMENT */
 let midPickerMode='add';let midPickerTargetIdx=-1;
 
+function _syncPickerToKeyboard(){
+  const sheet=document.querySelector('#mid-workout-picker .picker-sheet');
+  if(!sheet)return;
+  if(window.visualViewport){
+    const vv=window.visualViewport;
+    const offset=window.innerHeight-vv.height-vv.offsetTop;
+    sheet.style.transform=offset>0?`translateY(-${offset}px)`:'';
+  }
+}
+
 function openMidWorkoutPicker(mode,idx){
   midPickerMode=mode;midPickerTargetIdx=idx;
   document.getElementById('mid-picker-title').textContent=mode==='swap'?'Swap Exercise':'Add Exercise';
@@ -1899,18 +1909,31 @@ function openMidWorkoutPicker(mode,idx){
   inp.value='';
   updateMidPickerSearch('');
   document.getElementById('mid-workout-picker').classList.add('show');
+  if(window.visualViewport)window.visualViewport.addEventListener('resize',_syncPickerToKeyboard);
   setTimeout(()=>inp.focus(),150);
 }
 
 function closeMidWorkoutPicker(){
   document.getElementById('mid-workout-picker').classList.remove('show');
+  const sheet=document.querySelector('#mid-workout-picker .picker-sheet');
+  if(sheet)sheet.style.transform='';
+  if(window.visualViewport)window.visualViewport.removeEventListener('resize',_syncPickerToKeyboard);
 }
 
 function updateMidPickerSearch(val){
   const container=document.getElementById('mid-picker-results');
   if(!container)return;
   const all=getAllExercises();
-  const results=val.length>=1?all.filter(e=>e.name.toLowerCase().includes(val.toLowerCase())||e.muscle.toLowerCase().includes(val.toLowerCase())):all.slice(0,30);
+  let results;
+  if(val.length>=1){
+    const words=val.toLowerCase().split(/\s+/).filter(Boolean);
+    results=all.filter(e=>{
+      const hay=e.name.toLowerCase()+' '+e.muscle.toLowerCase();
+      return words.every(w=>hay.includes(w));
+    });
+  }else{
+    results=all.slice(0,30);
+  }
   container.innerHTML=results.slice(0,30).map(e=>
     `<div class="ex-card" style="margin:0 0 4px;border-radius:10px;background:var(--input)" onclick="selectMidWorkoutEx('${e.id}')"><div><div class="ex-card-name">${e.name}</div><div class="ex-card-meta">${e.equip}</div></div><span class="badge">${e.muscle}</span></div>`
   ).join('');
