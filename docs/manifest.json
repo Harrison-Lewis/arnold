@@ -1,0 +1,19 @@
+{
+  "name": "Arnold — Progressive Overload",
+  "short_name": "Arnold",
+  "description": "Workout tracker with progressive overload coaching",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0C0C0E",
+  "theme_color": "#0C0C0E",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
