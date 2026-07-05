@@ -151,6 +151,20 @@ h3{font-size:17px;font-weight:600;margin-bottom:8px;color:var(--text)}
 .log-rec.danger{color:var(--danger);background:rgba(255,69,58,0.08);border-left-color:var(--danger)}
 .log-prep{font-size:12px;color:var(--text3);margin:-2px 0 10px;padding:8px 13px;background:rgba(255,255,255,0.03);border:1px solid var(--divider);border-radius:10px;line-height:1.7}
 .log-prep b{color:var(--text2);font-weight:600}
+/* Coach chat */
+#coach-msgs{display:flex;flex-direction:column;gap:10px;min-height:100px;padding-bottom:12px}
+.coach-bubble{max-width:85%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.coach-bubble.user{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+.coach-bubble.coach{align-self:flex-start;background:var(--card);color:var(--text);border-bottom-left-radius:4px}
+#coach-chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}
+.coach-chip{padding:8px 12px;border-radius:100px;background:var(--card);color:var(--text2);font-size:13px;border:1px solid var(--border);cursor:pointer}
+#coach-input-row{display:flex;gap:8px;position:sticky;bottom:8px}
+#coach-input{flex:1;padding:12px 16px;border-radius:100px;background:var(--input);color:var(--text);font-size:15px}
+.coach-typing{display:inline-flex;gap:4px;padding:12px 14px}
+.coach-typing span{width:7px;height:7px;border-radius:50%;background:var(--text3);animation:ctyp 1s infinite}
+.coach-typing span:nth-child(2){animation-delay:.15s}
+.coach-typing span:nth-child(3){animation-delay:.3s}
+@keyframes ctyp{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
 .set-row{display:grid;grid-template-columns:28px 1fr 1fr 66px 52px;gap:8px;align-items:center;margin-bottom:8px}
 .set-label{font-size:13px;color:var(--text3);font-weight:500;text-align:center}
 .set-input{padding:14px 6px;background:var(--input);border-radius:10px;font-size:15px;font-weight:600;text-align:center;width:100%;color:var(--text);height:52px;border:1px solid var(--border)}
@@ -360,6 +374,7 @@ h3{font-size:17px;font-weight:600;margin-bottom:8px;color:var(--text)}
     <div class="profile-field"><label>Gender</label><select id="profile-gender" onchange="saveProfileField('gender',this.value)"><option value="male">Male</option><option value="female">Female</option></select></div>
     <div class="profile-field"><label>Age</label><input type="number" id="profile-age" min="10" max="100" style="width:70px;padding:6px 10px;border-radius:8px;background:var(--input);font-size:14px" onchange="saveProfileField('age',+this.value)"></div>
     <div class="profile-field"><label>Weight unit</label><select id="profile-unit" onchange="setUnit(this.value);closeProfileModal();renderScreen(currentScreen)" style="padding:6px 10px;border-radius:8px;background:var(--input);font-size:14px"><option value="kg">kg</option><option value="lbs">lbs</option></select></div>
+    <div class="profile-field"><label>WHOOP</label><span id="profile-whoop"></span></div>
     <div style="margin-top:20px"></div>
     <button class="btn btn-block btn-secondary" onclick="exportForAI()">Export for AI Coaching</button>
     <button class="btn btn-block btn-secondary mt-8" onclick="downloadExportJSON()">Download Full History (JSON)</button>
@@ -489,6 +504,8 @@ h3{font-size:17px;font-weight:600;margin-bottom:8px;color:var(--text)}
     <div class="screen" id="screen-log"></div>
     <!-- HISTORY -->
     <div class="screen" id="screen-history"></div>
+    <!-- COACH -->
+    <div class="screen" id="screen-coach"></div>
   </div>
 
   <nav>
@@ -511,6 +528,10 @@ h3{font-size:17px;font-weight:600;margin-bottom:8px;color:var(--text)}
     <button onclick="go('history')" data-tab="history">
       <svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
       <span>History</span>
+    </button>
+    <button onclick="go('coach')" data-tab="coach">
+      <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM7 9h10v2H7V9zm6 5H7v-2h6v2zm4-6H7V6h10v2z"/></svg>
+      <span>Coach</span>
     </button>
   </nav>
 </div>
@@ -884,7 +905,7 @@ const LS={
 };
 
 // In-memory cache — loaded from Supabase on sign-in
-const DB={sessions:[],routines:[],customExercises:[],userId:null,userName:'',userEmail:''};
+const DB={sessions:[],routines:[],customExercises:[],userId:null,userName:'',userEmail:'',whoopConnected:false,whoopRecovery:null};
 
 // --- Synchronous reads from cache ---
 function getSessions(){return DB.sessions}
@@ -985,6 +1006,7 @@ function withTimeout(promise,ms){
 async function loadUserData(user){
   DB.userId=user.id;
   DB.userEmail=user.email||'';
+  loadWhoopRecovery(); // non-blocking; no-op for users without WHOOP
   showLoading(true);
   let profileLoaded=false;
   try{
@@ -1086,7 +1108,7 @@ function getLastPerformance(exId){
 // Inverse Epley: given a target e1RM and rep count, return the weight to lift
 function weightFromE1RM(e1rm,reps){return reps===1?e1rm:e1rm/(1+reps/30);}
 
-function getOverloadRec(exId,targetReps,targetRPE){
+function _getOverloadRecBase(exId,targetReps,targetRPE){
   const ex0=EXERCISE_MAP[exId];
   if(ex0&&ex0.type==='cardio')return null;
   const hist=getExerciseHistory(exId);
@@ -1148,6 +1170,73 @@ function getOverloadRec(exId,targetReps,targetRPE){
   return{type:'progress',text:`Est. 1RM ${displayW(+bestE1RM.toFixed(1))}${u} \u2192 target ${displayW(+targetE1RM.toFixed(1))}${u}. Lift ${displayW(targetW)}${u} \u00d7 ${midReps} reps`,weight:targetW,reps:midReps};
 }
 
+/* ============================================================
+   WHOOP RECOVERY INTEGRATION
+   ============================================================ */
+async function loadWhoopRecovery(){
+  try{
+    const {data:{session}}=await supa.auth.getSession();
+    if(!session)return;
+    const r=await fetch(SUPA_URL+'/functions/v1/whoop-recovery',{headers:{Authorization:'Bearer '+session.access_token}});
+    if(!r.ok)return;
+    const j=await r.json();
+    DB.whoopConnected=!!j.connected;
+    DB.whoopRecovery=j.connected?(j.recovery||[]):null;
+    if(currentScreen==='home')renderHome();
+  }catch(e){/* WHOOP optional — never break the app */}
+}
+
+function getTodayRecovery(){
+  if(!DB.whoopRecovery||!DB.whoopRecovery.length)return null;
+  const today=new Date().toISOString().split('T')[0];
+  return DB.whoopRecovery.find(r=>r.date===today&&r.recovery_score!=null)||null;
+}
+
+async function connectWhoop(){
+  const {data:{session}}=await supa.auth.getSession();
+  if(!session){showToast('Sign in first');return}
+  window.location.href=SUPA_URL+'/functions/v1/whoop-auth-start?token='+encodeURIComponent(session.access_token);
+}
+
+async function disconnectWhoop(){
+  try{
+    const {data:{session}}=await supa.auth.getSession();
+    if(session)await fetch(SUPA_URL+'/functions/v1/whoop-disconnect',{method:'POST',headers:{Authorization:'Bearer '+session.access_token}});
+  }catch(e){}
+  DB.whoopConnected=false;DB.whoopRecovery=null;
+  renderWhoopRow();showToast('WHOOP disconnected');
+  if(currentScreen==='home')renderHome();
+}
+
+function renderWhoopRow(){
+  const el=document.getElementById('profile-whoop');
+  if(!el)return;
+  el.innerHTML=DB.whoopConnected
+    ?`<span class="text-sm" style="color:#34C759;font-weight:600;margin-right:8px">Connected</span><button class="btn btn-sm btn-secondary" onclick="disconnectWhoop()">Disconnect</button>`
+    :`<button class="btn btn-sm btn-secondary" onclick="connectWhoop()">Connect WHOOP</button>`;
+}
+
+// Recovery-aware wrapper around the base progressive overload engine.
+// Users without WHOOP see identical behaviour (getTodayRecovery() is null).
+function getOverloadRec(exId,targetReps,targetRPE){
+  const rec=_getOverloadRecBase(exId,targetReps,targetRPE);
+  const wr=getTodayRecovery();
+  if(!rec||!wr||!rec.weight)return rec;
+  const ex=EXERCISE_MAP[exId];const inc=ex?ex.inc:2.5;const u=unitLabel();
+  const sc=wr.recovery_score;
+  if(sc<34){
+    const w=Math.max(inc,Math.round(rec.weight*0.9/inc)*inc);
+    return{...rec,type:'hold',weight:w,text:`Recovery ${sc}% — work at ${displayW(w)}${u} × ${rec.reps} reps (WHOOP red recovery)`};
+  }
+  if(sc<67&&rec.type==='progress'){
+    const last=getLastPerformance(exId);
+    const lastW=last&&last.sets.length?last.sets.reduce((b,s)=>Math.max(b,s.weight||0),0):rec.weight;
+    const w=Math.max(inc,Math.round(lastW/inc)*inc);
+    return{...rec,type:'hold',weight:w,text:`Hold ${displayW(w)}${u} × ${rec.reps} reps (WHOOP yellow recovery)`};
+  }
+  return rec;
+}
+
 function checkRegression(exId,currentW,currentR){
   const last=getLastPerformance(exId);
   if(!last)return false;
@@ -1175,6 +1264,7 @@ function renderScreen(screen){
     case'routines':renderRoutines();break;
     case'log':renderLog();break;
     case'history':renderHistory();break;
+    case'coach':renderCoach();break;
   }
 }
 
@@ -1255,6 +1345,25 @@ function renderHome(){
     html+=`<div style="text-align:center"><div class="streak-dot${filled?' filled':''}"></div><div class="text-xs text-muted" style="margin-top:4px">${dayLabels[i]}</div></div>`;
   }
   html+=`</div><div class="text-sm text-muted" style="text-align:center">${weekDays.size} of 7 days trained</div></div>`;
+
+  // WHOOP recovery card
+  const wr=getTodayRecovery();
+  if(wr){
+    const sc=wr.recovery_score;
+    const col=sc>=67?'#34C759':(sc>=34?'var(--warn)':'var(--danger)');
+    const dir=sc>=67
+      ?`Recovery ${sc}% — full send. Progress your lifts as recommended.`
+      :(sc>=34
+        ?`Recovery ${sc}% — go steady. Hold last session's weights, cut 1 set on isolations.`
+        :`Recovery ${sc}% — back off. Consider rest or light technique work at 60-70%.`);
+    html+=`<div class="card" style="border:1px solid ${col}"><div class="flex justify-between items-center mb-8"><h3 style="margin:0">WHOOP Recovery</h3><span style="font-weight:800;font-size:22px;color:${col}">${sc}%</span></div><div class="text-sm" style="margin-bottom:6px">${dir}</div><div class="text-xs text-muted">HRV ${wr.hrv_ms!=null?Math.round(wr.hrv_ms)+'ms':'—'} · RHR ${wr.rhr!=null?Math.round(wr.rhr)+'bpm':'—'}</div></div>`;
+  }
+
+  // Weekly review card (AI coach)
+  const lastReview=LS.get('wc_last_review',0);
+  if(sessions.length>0&&Date.now()-lastReview>7*24*3600000){
+    html+=`<div class="card card-glow" style="cursor:pointer" onclick="startWeeklyReview()"><div class="flex justify-between items-center"><div><h3 style="margin:0 0 4px">Your weekly review is ready</h3><div class="text-sm text-muted">Ask Arnold what went well and what to change</div></div><span style="font-size:22px">\u{1f4ac}</span></div></div>`;
+  }
 
   // Recommended routine
   if(recRoutine){
@@ -2312,6 +2421,7 @@ function buildExportData(){
       last_session:exportSessions.length?exportSessions[exportSessions.length-1].date:null
     },
     personal_records:personalRecords,
+    recovery_data:DB.whoopRecovery&&DB.whoopRecovery.length?DB.whoopRecovery.slice(0,30):undefined,
     sessions:exportSessions
   };
 }
@@ -2787,6 +2897,7 @@ function showProfileModal(){
   document.getElementById('profile-name-display').textContent=DB.userName||'User';
   document.getElementById('profile-email-display').textContent=DB.userEmail||'';
   document.getElementById('profile-unit').value=getUnit();
+  renderWhoopRow();
   document.getElementById('profile-modal').classList.add('show');
 }
 
@@ -2858,6 +2969,121 @@ document.addEventListener('visibilitychange',()=>{
     else{timerRemaining=remaining;updateTimerDisplay();}
   }
 });
+
+/* ============================================================
+   SCREEN: COACH (Ask Arnold — AI coaching chat)
+   ============================================================ */
+let coachMessages=[];let coachBusy=false;
+
+function escCoach(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+function buildCoachHistory(){
+  const d=buildExportData();
+  const cutoff=new Date(Date.now()-90*24*3600000).toISOString().split('T')[0];
+  d.sessions=d.sessions.filter(s=>s.date>=cutoff).map(s=>({
+    ...s,
+    exercises:s.exercises.map(ex=>({...ex,sets:ex.sets.map(({est_1rm,...rest})=>rest)}))
+  }));
+  return d;
+}
+
+function renderCoach(){
+  const el=document.getElementById('screen-coach');
+  if(!el.dataset.built){
+    el.dataset.built='1';
+    el.innerHTML=`<h2 style="margin-bottom:12px">Ask Arnold</h2>
+      <div id="coach-msgs"></div>
+      <div id="coach-chips">
+        <button class="coach-chip" onclick="sendCoach(this.textContent)">Review my last week</button>
+        <button class="coach-chip" onclick="sendCoach(this.textContent)">Where am I stalling?</button>
+        <button class="coach-chip" onclick="sendCoach(this.textContent)">Plan my next push day</button>
+        <button class="coach-chip" onclick="sendCoach(this.textContent)">Am I balanced across muscle groups?</button>
+      </div>
+      <div id="coach-input-row"><input id="coach-input" type="text" placeholder="Ask about your training..." autocomplete="off" onkeydown="if(event.key==='Enter')sendCoach()" onfocus="_syncCoachToKeyboard()" onblur="_unsyncCoachFromKeyboard()"><button class="btn btn-primary btn-sm" onclick="sendCoach()">Send</button></div>`;
+  }
+  renderCoachMsgs();
+}
+
+function renderCoachMsgs(){
+  const box=document.getElementById('coach-msgs');
+  if(!box)return;
+  let html='';
+  if(!coachMessages.length&&!coachBusy){
+    html+=`<div class="card empty-state"><p>Ask anything about your training — answers are grounded in your actual history.</p></div>`;
+  }
+  coachMessages.forEach(m=>{
+    html+=`<div class="coach-bubble ${m.role==='user'?'user':'coach'}">${escCoach(m.content)}</div>`;
+  });
+  if(coachBusy)html+=`<div class="coach-bubble coach coach-typing"><span></span><span></span><span></span></div>`;
+  box.innerHTML=html;
+  if(box.lastElementChild&&typeof box.lastElementChild.scrollIntoView==='function')box.lastElementChild.scrollIntoView({block:'end'});
+}
+
+async function sendCoach(preset){
+  const input=document.getElementById('coach-input');
+  const text=((typeof preset==='string'&&preset)||(input&&input.value)||'').trim();
+  if(!text||coachBusy)return;
+  if(input&&!preset)input.value='';
+  coachMessages.push({role:'user',content:text});
+  coachBusy=true;renderCoachMsgs();
+  try{
+    const {data:{session}}=await supa.auth.getSession();
+    if(!session)throw new Error('auth');
+    const r=await fetch(SUPA_URL+'/functions/v1/ai-coach',{
+      method:'POST',
+      headers:{Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
+      body:JSON.stringify({messages:coachMessages,history:buildCoachHistory()})
+    });
+    if(r.status===429){
+      coachMessages.pop();
+      if(input&&!preset)input.value=text;
+      showToast('Coach limit reached for today — try tomorrow.');
+      return;
+    }
+    if(!r.ok)throw new Error('api');
+    const j=await r.json();
+    coachMessages.push({role:'assistant',content:j.text||'Hmm, no answer came back. Try again.'});
+  }catch(e){
+    coachMessages.pop();
+    if(input&&!preset)input.value=text;
+    showToast('Coach unavailable — try again.');
+  }finally{
+    coachBusy=false;renderCoachMsgs();
+  }
+}
+
+function startWeeklyReview(){
+  go('coach');
+  LS.set('wc_last_review',Date.now());
+  sendCoach('Review my last week of training: what went well, what stalled, and exactly what to change this week.');
+  if(currentScreen==='home')renderHome();
+}
+
+// Keep the chat input above the iOS keyboard (same pattern as _syncPickerToKeyboard)
+function _syncCoachToKeyboard(){
+  if(!window.visualViewport)return;
+  const row=document.getElementById('coach-input-row');
+  if(!row)return;
+  const fix=()=>{const off=window.innerHeight-window.visualViewport.height-window.visualViewport.offsetTop;row.style.bottom=Math.max(8,off+8)+'px'};
+  window.visualViewport.addEventListener('resize',fix);
+  row._kbFix=fix;fix();
+}
+function _unsyncCoachFromKeyboard(){
+  const row=document.getElementById('coach-input-row');
+  if(!row)return;
+  if(row._kbFix&&window.visualViewport)window.visualViewport.removeEventListener('resize',row._kbFix);
+  row.style.bottom='8px';
+}
+
+// Handle the WHOOP OAuth return redirect (?whoop=connected|error)
+(function(){
+  const p=new URLSearchParams(location.search);
+  if(p.has('whoop')){
+    const ok=p.get('whoop')==='connected';
+    setTimeout(()=>showToast(ok?'WHOOP connected':'WHOOP connection failed'),800);
+    history.replaceState(null,'',location.pathname);
+  }
+})();
 
 // Listen for auth state changes (handles OAuth redirect callback)
 // Guard with a flag so init() and onAuthStateChange don't both load data

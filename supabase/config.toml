@@ -1,0 +1,19 @@
+project_id = "suzavcotbneyhqzygrym"
+
+# OAuth redirect endpoints are hit by plain browser navigation / WHOOP servers,
+# so they can't carry a Supabase auth header. They verify identity themselves
+# (JWT via ?token=, HMAC-signed state on the callback).
+[functions.whoop-auth-start]
+verify_jwt = false
+
+[functions.whoop-auth-callback]
+verify_jwt = false
+
+[functions.whoop-recovery]
+verify_jwt = true
+
+[functions.whoop-disconnect]
+verify_jwt = true
+
+[functions.ai-coach]
+verify_jwt = true

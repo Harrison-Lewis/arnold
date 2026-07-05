@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(node:*)",
+      "Bash(open:*)",
+      "Bash(sort -t' ' -k2)",
+      "Bash(uniq -d -f1)",
+      "Bash(git -C /Users/harry/whoop-coach add dashboard/index.html docs/index.html)",
+      "Bash(git -C /Users/harry/whoop-coach commit -m ':*)",
+      "Bash(git -C /Users/harry/whoop-coach push)"
+    ]
+  }
+}
