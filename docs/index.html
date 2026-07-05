@@ -967,7 +967,8 @@ async function saveCustomExercises(exs){
 async function setUserName(name){
   DB.userName=name;
   if(!DB.userId)return;
-  await supa.from('profiles').update({name}).eq('id',DB.userId);
+  // upsert so new users (no profile row yet) get their name saved
+  await supa.from('profiles').upsert({id:DB.userId,name}).catch(()=>{});
 }
 
 // --- Load all user data from Supabase into cache ---
@@ -983,7 +984,7 @@ async function loadUserData(user){
   let profileLoaded=false;
   try{
     const [profRes,sessRes,routRes,exRes]=await withTimeout(Promise.all([
-      supa.from('profiles').select('name').eq('id',user.id).single(),
+      supa.from('profiles').select('name').eq('id',user.id).maybeSingle(),
       supa.from('sessions').select('*').eq('user_id',user.id).order('created_at'),
       supa.from('routines').select('*').eq('user_id',user.id).order('created_at'),
       supa.from('custom_exercises').select('*').eq('user_id',user.id).order('created_at'),
@@ -2597,11 +2598,13 @@ async function init(){
     const res=await withTimeout(supa.auth.getSession(),10000);
     session=res.data?.session||null;
   }catch(e){
-    showAuth();
+    if(!_authHandled)showAuth();
     return;
   }
   if(session){
-    _authHandled=true; // prevent onAuthStateChange from double-loading
+    // onAuthStateChange may have already handled this session during the await above
+    if(_authHandled)return;
+    _authHandled=true;
     const loaded=await loadUserData(session.user);
     if(loaded&&!DB.userName){
       document.getElementById('welcome').classList.add('hide');
@@ -2610,7 +2613,8 @@ async function init(){
       showApp();
     }
   }else{
-    showAuth();
+    // Don't show auth if onAuthStateChange already handled a SIGNED_IN event
+    if(!_authHandled)showAuth();
   }
 }
 
