@@ -1,6 +1,6 @@
 /* Arnold service worker — offline app shell + CDN asset caching.
    Bump CACHE version whenever index.html changes to force refresh. */
-const CACHE = 'arnold-v4';
+const CACHE = 'arnold-v5';
 const SHELL = ['./', 'index.html', 'manifest.json', 'icon.svg'];
 
 self.addEventListener('install', (e) => {

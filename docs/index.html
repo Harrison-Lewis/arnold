@@ -527,6 +527,7 @@ function E(id,name,muscle,equip,inc,type){return{id,name,muscle,equip,inc,type:t
 const EXERCISES=[
 // CHEST
 E('smith-incline-bench','Smith Machine Incline Bench Press','Chest','Machine',2.5),
+E('smith-flat-bench','Smith Machine Flat Bench Press','Chest','Machine',2.5),
 E('bb-bench','Barbell Bench Press','Chest','Barbell',2.5),
 E('incline-bb-bench','Incline Barbell Bench Press','Chest','Barbell',2.5),
 E('decline-bb-bench','Decline Barbell Bench Press','Chest','Barbell',2.5),
@@ -795,6 +796,44 @@ const PRESET_ROUTINES=[
   {exerciseId:'pallof-press',sets:2,reps:'10/side',rpe:7},
   {exerciseId:'ab-wheel',sets:2,reps:'8-10',rpe:8},
   {exerciseId:'hanging-leg-raise',sets:2,reps:'10-12',rpe:8},
+]},
+{id:'preset-upper-a',name:'Upper A - Heavy Bench',preset:true,exercises:[
+  {exerciseId:'smith-flat-bench',sets:4,reps:'3-5',rpe:8},
+  {exerciseId:'pull-up',sets:4,reps:'6-8',rpe:8},
+  {exerciseId:'db-shoulder-press',sets:3,reps:'8-10',rpe:8},
+  {exerciseId:'lat-raise-cable-l',sets:3,reps:'12-15',rpe:8},
+  {exerciseId:'lat-raise-cable-r',sets:3,reps:'12-15',rpe:8},
+  {exerciseId:'tri-pulldown-rope',sets:3,reps:'10-12',rpe:8},
+]},
+{id:'preset-lower-a',name:'Lower A',preset:true,exercises:[
+  {exerciseId:'hack-squat',sets:4,reps:'6-10',rpe:8},
+  {exerciseId:'lying-leg-curl',sets:3,reps:'10-12',rpe:8},
+  {exerciseId:'leg-extension',sets:3,reps:'10-12',rpe:8},
+  {exerciseId:'hyperextension',sets:3,reps:'12-15',rpe:8},
+  {exerciseId:'calf-raise-standing',sets:3,reps:'12-15',rpe:8},
+]},
+{id:'preset-push-b',name:'Push B - Shoulders + Incline Bench',preset:true,exercises:[
+  {exerciseId:'bb-ohp',sets:4,reps:'6-8',rpe:8},
+  {exerciseId:'smith-incline-bench',sets:3,reps:'8-10',rpe:8},
+  {exerciseId:'chest-press-machine',sets:2,reps:'10-12',rpe:8},
+  {exerciseId:'lat-raise-db',sets:3,reps:'12-15',rpe:8},
+  {exerciseId:'oh-tri-ext-cable',sets:3,reps:'10-12',rpe:8},
+  {exerciseId:'cable-reverse-fly',sets:2,reps:'15-20',rpe:8},
+]},
+{id:'preset-pull-b',name:'Pull B - Width + Arms',preset:true,exercises:[
+  {exerciseId:'wide-pulldown',sets:4,reps:'8-10',rpe:8},
+  {exerciseId:'chest-supported-row',sets:3,reps:'10-12',rpe:8},
+  {exerciseId:'incline-db-curl',sets:3,reps:'10-12',rpe:8},
+  {exerciseId:'bicep-curl-cable',sets:3,reps:'12-15',rpe:8},
+  {exerciseId:'face-pull',sets:3,reps:'15-20',rpe:8},
+  {exerciseId:'hammer-curl-db',sets:2,reps:'10-12',rpe:8},
+]},
+{id:'preset-pump-zone2',name:'Delt/Arm Pump + Zone 2',preset:true,exercises:[
+  {exerciseId:'lat-raise-db',sets:3,reps:'21',rpe:8},
+  {exerciseId:'shoulder-press-machine',sets:3,reps:'12',rpe:8},
+  {exerciseId:'bicep-curl-cable',sets:3,reps:'15',rpe:8},
+  {exerciseId:'tri-pulldown-rope',sets:3,reps:'15',rpe:8},
+  {exerciseId:'run-outdoor',sets:1,reps:'-',rpe:'-'},
 ]},
 ];
 
@@ -1175,7 +1214,22 @@ function getTodayRecovery(){
 async function connectWhoop(){
   const {data:{session}}=await supa.auth.getSession();
   if(!session){showToast('Sign in first');return}
-  window.location.href=SUPA_URL+'/functions/v1/whoop-auth-start?token='+encodeURIComponent(session.access_token);
+  const url=SUPA_URL+'/functions/v1/whoop-auth-start?token='+encodeURIComponent(session.access_token);
+  // Open OAuth in a separate window so the app never navigates away
+  // (navigating the app itself could drop the auth session, e.g. in installed PWAs)
+  const w=window.open(url,'_blank');
+  if(!w){window.location.href=url;return} // popup blocked — fall back to same-tab
+  showToast('Finish connecting in the WHOOP window');
+  let tries=0;
+  const poll=setInterval(async()=>{
+    if(++tries>40){clearInterval(poll);return} // give up after ~2 min
+    await loadWhoopRecovery();
+    if(DB.whoopConnected){
+      clearInterval(poll);
+      renderWhoopRow();
+      showToast('WHOOP connected');
+    }
+  },3000);
 }
 
 async function disconnectWhoop(){

@@ -1,7 +1,20 @@
 // whoop-auth-callback: WHOOP redirects here with ?code&state.
-// Exchanges the code for tokens, stores them (service role), and bounces
-// back to the app. Deploy with --no-verify-jwt.
+// Exchanges the code for tokens, stores them (service role), and shows a
+// self-closing result page (the app opens this flow in a popup/new tab so
+// it never navigates away from its own session). Deploy with --no-verify-jwt.
 import { verifyState, serviceRest, APP_URL } from "../_shared/util.ts";
+
+function resultPage(ok: boolean): Response {
+  const msg = ok ? "WHOOP connected" : "WHOOP connection failed";
+  const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>${msg}</title></head>
+<body style="margin:0;background:#0d0d0f;color:#f2f2f2;font-family:-apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center">
+<div><h2 style="margin:0 0 8px">${ok ? "&#10003; " : ""}${msg}</h2>
+<p style="color:#999">This window will close itself.<br>If it doesn't, <a href="${APP_URL}?whoop=${ok ? "connected" : "error"}" style="color:#e84040">return to Arnold</a>.</p>
+<script>setTimeout(function(){window.close()},1500)</script></div></body></html>`;
+  return new Response(html, {
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
 
 Deno.serve(async (req) => {
   const url = new URL(req.url);
@@ -9,7 +22,7 @@ Deno.serve(async (req) => {
   const userId = await verifyState(url.searchParams.get("state"));
 
   if (!code || !userId) {
-    return Response.redirect(`${APP_URL}?whoop=error`, 302);
+    return resultPage(false);
   }
 
   const redirectUri = `${Deno.env.get("SUPABASE_URL")}/functions/v1/whoop-auth-callback`;
@@ -27,7 +40,7 @@ Deno.serve(async (req) => {
 
   if (!tokenRes.ok) {
     console.error("WHOOP token exchange failed", await tokenRes.text());
-    return Response.redirect(`${APP_URL}?whoop=error`, 302);
+    return resultPage(false);
   }
 
   const tok = await tokenRes.json();
@@ -45,8 +58,8 @@ Deno.serve(async (req) => {
 
   if (!upsert.ok) {
     console.error("whoop_tokens upsert failed", await upsert.text());
-    return Response.redirect(`${APP_URL}?whoop=error`, 302);
+    return resultPage(false);
   }
 
-  return Response.redirect(`${APP_URL}?whoop=connected`, 302);
+  return resultPage(true);
 });
