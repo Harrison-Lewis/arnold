@@ -1,7 +1,7 @@
 /* Arnold service worker — offline app shell + CDN asset caching.
    Bump CACHE version whenever index.html changes to force refresh. */
-const CACHE = 'arnold-v5';
-const SHELL = ['./', 'index.html', 'manifest.json', 'icon.svg'];
+const CACHE = 'arnold-v6';
+const SHELL = ['./', 'index.html', 'manifest.json', 'icon.svg', 'whoop-done.html'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -24,16 +24,18 @@ self.addEventListener('fetch', (e) => {
   // Never cache Supabase API/auth calls — always network
   if (url.hostname.endsWith('supabase.co')) return;
 
-  // Navigations: network-first so deploys show up, cache fallback for offline
+  // Navigations: network-first so deploys show up, cache fallback for offline.
+  // Cache under the right key so whoop-done.html never overwrites the app shell.
   if (e.request.mode === 'navigate') {
+    const key = url.pathname.endsWith('whoop-done.html') ? 'whoop-done.html' : 'index.html';
     e.respondWith(
       fetch(e.request)
         .then((r) => {
           const copy = r.clone();
-          caches.open(CACHE).then((c) => c.put('index.html', copy));
+          caches.open(CACHE).then((c) => c.put(key, copy));
           return r;
         })
-        .catch(() => caches.match('index.html'))
+        .catch(() => caches.match(key))
     );
     return;
   }
